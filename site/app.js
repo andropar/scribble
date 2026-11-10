@@ -162,7 +162,7 @@
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = c === "#ffcc00" ? "#000" : "#fff";
-    ctx.font = "700 13px 'Instrument Sans', sans-serif";
+    ctx.font = "700 13px Geist, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(n), x, y + 0.5);
@@ -648,7 +648,7 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
 
   var rising = document.querySelectorAll(
-    ".strip h2, .steps li, .proof > *, .modes-head, .mode-grid article, .facts li, .private, .download h2, .dl-grid article, .faq details, .closing > *",
+    ".strip h2, .steps li, .strip .film, .modes-head, .mode-grid article, .facts li, .private, .download h2, .dl-grid article, .faq details",
   );
   if (!("IntersectionObserver" in window)) {
     marks.forEach(function (el) {

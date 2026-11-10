@@ -14,7 +14,7 @@
 <link rel="icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -76,21 +76,12 @@
 </section>
 
 <section class="strip" id="how">
-  <h2>One hotkey in. One paste out.</h2>
+  <h2><span data-mark="circle">“This thing here”</span> finally means something.</h2>
   <ol class="steps">
     <li><span class="n">1</span><h3>Press the shortcut</h3><p>Your screen freezes, or keeps recording while you work. The microphone is on. No window to arrange, no dialog to click through.</p></li>
     <li><span class="n">2</span><h3>Say it and point at it</h3><p>Circle the number that is wrong. Draw an arrow to where the button should go. Every mark gets a number, burned into the image.</p></li>
     <li><span class="n">3</span><h3>Paste into your agent</h3><p>A few seconds later the clipboard holds the screenshots and a transcript with each mark cited at the word you were saying, with pixel coordinates.</p></li>
   </ol>
-</section>
-
-<section class="proof">
-  <div class="proof-text">
-    <h2><span data-mark="circle">“This thing here”</span> finally means something.</h2>
-    <p>A bare screenshot loses the pointing. A voice memo loses the screen. voice-annotate keeps strokes, clicks, audio and frames on one clock, so the agent reads this:</p>
-    <blockquote>This best <code>[#1 circled (301,290)-(450,340) in frame 1]</code> accuracy says 312%. That has to be a units bug.</blockquote>
-    <p>It knows what you meant and where it is. No back-and-forth.</p>
-  </div>
   <figure class="film" id="film">
     <video src="assets/demo.mp4" poster="assets/poster.png" controls preload="none" playsinline></video>
     <figcaption>34 seconds, no sound needed.</figcaption>
@@ -138,6 +129,16 @@
   <p>Transcription runs locally with Whisper: on the Neural Engine on a Mac, on the CPU or an NVIDIA GPU elsewhere. Captures live in a folder in your home directory and are deleted after 14 days. There is no server, no telemetry, and nothing to sign up for.</p>
 </section>
 
+<section class="faq" id="faq">
+  <h2>Questions</h2>
+  <div class="faq-list">
+  <details><summary>Which agents does it work with?</summary><p>Anything you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
+  <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac a one-minute recording takes about five seconds once the model has warmed up. On Windows and Linux it runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
+  <details><summary>Does it understand languages other than English?</summary><p>Not yet. Transcription is set to English.</p></details>
+  <details><summary>What is different on Windows and Linux?</summary><p>Same three modes and the same output, in a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. The Wayland mode is reduced and new; details are in the <a href="https://github.com/andropar/voice-annotate#windows-and-linux">README</a>.</p></details>
+  </div>
+</section>
+
 <section class="download" id="download">
   <h2>Download voice-annotate</h2>
   <p class="price"><span data-mark="line" data-color="#ffcc00">Free.</span> No trial, no tiers. <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT licensed</a>.</p>
@@ -162,23 +163,6 @@
     </article>
   </div>
   <p class="first-run">On first start the app downloads a speech model once (about 0.5 GB). After that it works offline.</p>
-</section>
-
-<section class="faq" id="faq">
-  <h2>Questions</h2>
-  <div class="faq-list">
-  <details><summary>Which agents does it work with?</summary><p>Anything you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
-  <details><summary>Is it really free?</summary><p>Yes. It is an open-source project under the MIT license. There is no paid version.</p></details>
-  <details><summary>Why does my system warn me when I open it?</summary><p>The downloads are not signed with a paid developer certificate, so macOS Gatekeeper and Windows SmartScreen ask for confirmation the first time. The source and the build scripts are public, and the Windows and Linux downloads are built by GitHub Actions from that source.</p></details>
-  <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac a one-minute recording takes about five seconds once the model has warmed up. On Windows and Linux it runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
-  <details><summary>Does it understand languages other than English?</summary><p>Not yet. Transcription is set to English.</p></details>
-  <details><summary>What is different on Windows and Linux?</summary><p>Same three modes and the same output, in a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. The Wayland mode is reduced and new; details are in the <a href="https://github.com/andropar/voice-annotate#windows-and-linux">README</a>.</p></details>
-  </div>
-</section>
-
-<section class="closing">
-  <h2>Stop describing.<br><span data-mark="line">Point at it.</span></h2>
-  <a class="button primary" href="#download"><span>Download free</span><small>macOS · Windows · Linux</small></a>
 </section>
 
 </main>
