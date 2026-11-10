@@ -193,7 +193,8 @@ keyboard settings if you prefer, or have to (see Wayland below).
 - **Linux, Wayland.** Wayland keeps apps from watching the keyboard, the pointer or the
   screen. The app runs through XWayland in a reduced mode: Snapshot and Dictation work,
   started from the tray or from desktop shortcuts bound to the commands above. Walkthrough
-  and hold-to-draw need an X11 session ("GNOME on Xorg", "Plasma (X11)").
+  and hold-to-draw need an X11 session ("GNOME on Xorg", "Plasma (X11)"). This mode is
+  written but has not been run on a real Wayland desktop yet.
 
 ### Status
 
