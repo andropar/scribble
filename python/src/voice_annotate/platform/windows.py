@@ -272,16 +272,17 @@ class WindowsPlatform(Platform):
     def set_autostart(self, enabled: bool) -> None:
         import winreg
 
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
-            if enabled:
-                winreg.SetValueEx(
-                    key, self._RUN_NAME, 0, winreg.REG_SZ, subprocess.list2cmdline(launch_command())
-                )
-            else:
-                try:
-                    winreg.DeleteValue(key, self._RUN_NAME)
-                except FileNotFoundError:
-                    pass
+        if enabled:
+            # A fresh user profile may not have the key yet.
+            with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, self._RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
+                command = subprocess.list2cmdline(launch_command())
+                winreg.SetValueEx(key, self._RUN_NAME, 0, winreg.REG_SZ, command)
+            return
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, self._RUN_NAME)
+        except FileNotFoundError:
+            pass
 
     def reveal(self, path: str) -> None:
         subprocess.Popen(["explorer", "/select,", path])

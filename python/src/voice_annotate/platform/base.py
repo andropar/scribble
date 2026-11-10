@@ -58,7 +58,10 @@ class HotkeyBackend(QObject):
 def launch_command() -> List[str]:
     """Command that starts the app (for autostart entries)."""
     if getattr(sys, "frozen", False):
-        return [sys.executable]
+        # The packaged app has a console launcher next to the windowed one; start the latter.
+        folder, name = os.path.split(sys.executable)
+        windowed = os.path.join(folder, name.replace("voice-annotate-cli", "voice-annotate"))
+        return [windowed if os.path.isfile(windowed) else sys.executable]
     exe = sys.executable
     if sys.platform == "win32":
         windowless = os.path.join(os.path.dirname(exe), "pythonw.exe")

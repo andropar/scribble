@@ -111,6 +111,11 @@ jobs:
           pactl set-default-source virtual.monitor
           python -c "import sounddevice as sd; print(sd.query_devices())"
 
+      - name: Virtual sound card (Windows)
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        continue-on-error: true
+        uses: LABSN/sound-ci-helpers@v1
+
       - name: Desktop tests (Linux, Xvfb)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         timeout-minutes: 15

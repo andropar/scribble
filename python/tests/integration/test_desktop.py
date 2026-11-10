@@ -359,6 +359,62 @@ def test_snapshot_with_real_mouse_and_keyboard(env, target, controller):
     assert close_to(env.pixel(after, 450, 500), (0xD0, 0x4A, 0x2E), 8)
 
 
+def test_toolbar_is_on_screen_above_the_overlay(env, target, controller, monkeypatch):
+    """Where the toolbar is hidden from capture (Windows) a screenshot cannot show it, so
+    this test turns that off and looks at the screen."""
+    monkeypatch.setattr(type(env.platform), "exclude_from_capture", lambda self, widget: False)
+    controller.hud = None
+
+    def dark_share(image, hud) -> float:
+        g = hud.frameGeometry()
+        left, top = g.x() - env.display.geometry.x(), g.y() - env.display.geometry.y()
+        points = [
+            (left + x, top + y) for x in range(12, g.width() - 12, 9) for y in range(8, g.height() - 8, 5)
+        ]
+        dark = [p for p in points if max(env.pixel(image, *p)) < 90]
+        return len(dark) / max(len(points), 1)
+
+    controller.start_snapshot()
+    assert wait_until(lambda: controller.phase == Phase.SNAPSHOT and bool(controller.overlays), 10)
+    pump(0.6)
+    hud = controller.hud
+    assert hud.isVisible() and not getattr(hud, "_excluded", False)
+    g = hud.frameGeometry()
+    # At the top of the display, horizontally centered, not wider than the display.
+    assert g.top() - env.display.geometry.top() < 60 and g.width() < env.display.geometry.width()
+    assert abs(g.center().x() - env.display.geometry.center().x()) <= 2
+    assert (
+        dark_share(env.snap("toolbar_snapshot"), hud) > 0.6
+    ), "toolbar is not visible above the frozen screen"
+
+    # Still on top after the overlay underneath was clicked and drawn on.
+    env.drag([(300, 300), (500, 420)])
+    assert wait_until(lambda: len(controller.session.annotations) == 1, 5)
+    assert (
+        dark_share(env.snap("toolbar_after_drawing"), hud) > 0.6
+    ), "drawing put the overlay above the toolbar"
+
+    # The navigating message replaces the tools; the toolbar is re-centered.
+    env.inject.key("Tab")
+    assert wait_until(lambda: controller.phase == Phase.SNAPSHOT_NAVIGATING, 5)
+    pump(0.5)
+    assert abs(hud.frameGeometry().center().x() - env.display.geometry.center().x()) <= 2
+    assert dark_share(env.snap("toolbar_navigating"), hud) > 0.6
+    controller.cancel()
+    pump(0.3)
+    assert not hud.isVisible()
+
+    # Walkthrough: toolbar above the transparent overlay, and a toast after cancelling.
+    controller.start_walkthrough()
+    assert wait_until(lambda: not controller.hud.starting, 15)
+    pump(0.5)
+    assert dark_share(env.snap("toolbar_walkthrough"), controller.hud) > 0.6
+    controller.cancel()
+    assert wait_until(lambda: controller.toast.isVisible(), 3)
+    pump(0.3)
+    assert dark_share(env.snap("toast"), controller.toast) > 0.5, "toast is not visible"
+
+
 def test_walkthrough_with_real_mouse_and_keyboard(env, target, controller):
     controller.settings.set("fadeSeconds", 6.0)
     controller.start_walkthrough()
@@ -579,6 +635,12 @@ def test_microphone_records_on_the_session_clock(env):
     recorder = audio.AudioRecorder()
     levels = []
     recorder.on_level = levels.append
+    buffers = []
+    callback = recorder._callback
+    recorder._callback = lambda indata, frames, *rest: (
+        buffers.append((len(indata), frames)),
+        callback(indata, frames, *rest),
+    )[1]
     started = paths.now()
     recorder.start()
     pump(1.5)
@@ -586,7 +648,12 @@ def test_microphone_records_on_the_session_clock(env):
     stopped = paths.now()
     if loopback:
         sd.stop()
-    assert 1.0 < result.duration < 2.2, result.duration
+    sys.stdout.write(
+        "\n[microphone] {} at {} Hz · {} buffers, first {} · {:.2f}s recorded\n".format(
+            audio.input_device_name(), recorder._rate, len(buffers), buffers[:3], result.duration
+        )
+    )
+    assert 1.0 < result.duration < 2.2, (result.duration, len(buffers), buffers[:5])
     assert started - 0.5 <= result.first_sample_time <= started + 0.6
     assert result.first_sample_time + result.duration <= stopped + 0.3
     assert levels, "no level updates"

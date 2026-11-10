@@ -282,19 +282,49 @@ class X11Platform(Platform):
             log.debug("Restoring focus failed: %s", error)
 
     def grab_keyboard(self, widget: QWidget) -> None:
+        """Gives an unmanaged overlay the keyboard, and checks for a moment that it kept it.
+
+        Qt asks for the focus with the time of the last event it saw, which the server ignores
+        if the window manager moved the focus since; and a request made before the window is
+        mapped fails. So: ask with CurrentTime until the server confirms.
+        """
+        from PySide6.QtCore import QTimer
+
         widget.activateWindow()
         widget.setFocus(Qt.OtherFocusReason)
-        try:
-            from Xlib import error as xerror
+        window_id = int(widget.winId())
+        timer = QTimer(widget)
+        timer.setInterval(40)
+        attempts = {"left": 40}
 
-            # Fails harmlessly (BadMatch) while the window is not mapped yet; Qt then sets
-            # the focus itself once it is.
-            self._window(widget).set_input_focus(
-                self._X.RevertToParent, self._X.CurrentTime, onerror=xerror.CatchError()
-            )
+        def ensure() -> None:
+            attempts["left"] -= 1
+            if attempts["left"] < 0 or not widget.isVisible():
+                timer.stop()
+                return
+            if not self._focus_window(window_id):
+                widget.activateWindow()
+
+        timer.timeout.connect(ensure)
+        timer.start()
+        ensure()
+
+    def _focus_window(self, window_id: int) -> bool:
+        """Sets the input focus to a window unless it has it. Returns whether it had it."""
+        from Xlib import error as xerror
+
+        X = self._X
+        try:
+            focus = self._display.get_input_focus().focus
+            if getattr(focus, "id", focus) == window_id:
+                return True
+            window = self._display.create_resource_object("window", window_id)
+            # BadMatch while the window is not viewable yet: the next attempt will do.
+            window.set_input_focus(X.RevertToParent, X.CurrentTime, onerror=xerror.CatchError())
             self._display.sync()
         except Exception as error:
             log.debug("set_input_focus failed: %s", error)
+        return False
 
     # Launch at login: an XDG autostart entry.
 
@@ -350,8 +380,8 @@ class X11Platform(Platform):
         notes = []
         if not self.compositing():
             notes.append(
-                "No compositing manager is running: Walkthrough marks are drawn with hard edges, "
-                "and drawing needs the toggle hotkey or the HUD button."
+                "No compositing manager is running, so windows cannot be translucent: Walkthrough marks "
+                "are drawn with hard edges and without their soft shadow."
             )
         return notes
 

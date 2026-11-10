@@ -4,8 +4,9 @@
 
 <p align="center">
   <b>Talk and draw on your screen, paste the result into any coding agent.</b><br>
-  A macOS menu bar app that turns "this thing here is broken" into annotated screenshots and a
-  transcript that says exactly which mark you meant, and when. On-device, no API keys.
+  A macOS menu bar app (with a port for Windows and Linux) that turns "this thing here is
+  broken" into annotated screenshots and a transcript that says exactly which mark you meant,
+  and when. On-device, no API keys.
 </p>
 
 ![Annotated screenshot of a training dashboard next to the capture.md an agent receives](docs/images/hero.png)
@@ -53,6 +54,10 @@ everything else is the actual pipeline ([example capture.md](docs/demo/example-c
 - **Fully local.** Transcription runs with [WhisperKit](https://github.com/argmaxinc/WhisperKit)
   (Whisper large-v3 turbo) on the GPU or Neural Engine. Nothing leaves the machine.
 
+The shortcuts and details above are those of the macOS app. The
+[Windows and Linux](#windows-and-linux) version has the same three modes and writes the same
+bundle, with its own shortcuts and a different transcription engine.
+
 ## How it works
 
 ![Pipeline: capture (screen, voice, overlay on one clock) → on-device processing (WhisperKit, keyframes, shape classifier, renderer) → capture.md and frames on the clipboard](docs/images/pipeline.png)
@@ -84,7 +89,8 @@ The full design is in [SPEC.md](SPEC.md).
 
 ## Install
 
-Requires macOS 15 or later on Apple Silicon.
+For Windows and Linux see [below](#windows-and-linux). The macOS app requires macOS 15 or
+later on Apple Silicon.
 
 1. Download `voice-annotate-<version>.zip` from
    [Releases](https://github.com/andropar/voice-annotate/releases), unzip it and move
@@ -128,9 +134,74 @@ Each capture is saved as a bundle in `~/.voice-annotate/captures/<timestamp>/`, 
 `capture.md`, the annotated frames, the audio, the recording and an `events.json` timeline.
 Bundles are pruned after 14 days.
 
+## Windows and Linux
+
+A separate implementation in [`python/`](python) (Python and Qt) with the same flows and the
+same bundle: `capture.md` is composed by a line-by-line port of the macOS app's core, and a
+test checks that both produce the same file from the same capture.
+
+### Install
+
+Needs Python 3.9 or later. With [uv](https://docs.astral.sh/uv/) (or `pipx install` with the
+same URL):
+
+```bash
+uv tool install "git+https://github.com/andropar/voice-annotate#subdirectory=python"
+```
+
+On Linux, two system libraries have to be there first (Debian/Ubuntu names):
+
+```bash
+sudo apt install libportaudio2 libxcb-cursor0
+```
+
+Then start it with `voice-annotate`. It puts an icon in the system tray; *Settings* has
+*Launch at login*. On the first start it downloads a Whisper model to
+`~/.voice-annotate/models` (Small English, ~480 MB, when it runs on the CPU).
+
+### Use
+
+| Shortcut | |
+|---|---|
+| `Ctrl+Alt+Shift+S` | **Snapshot.** `Tab` hides the overlay so you can navigate, the shortcut again takes the next shot, `Enter` finishes, `Esc` cancels |
+| `Ctrl+Alt+Shift+W` | **Walkthrough.** Hold `Ctrl+Alt` (or toggle with `Ctrl+Alt+Shift+D`) to draw; the shortcut again finishes |
+| `Ctrl+Alt+Shift+T` | **Dictation.** The shortcut again copies the transcript as plain text |
+| `Ctrl+Alt+Shift+F` | Finish any capture |
+
+Tool keys in a Snapshot are the same as on macOS, with `Ctrl+Z` for undo. All shortcuts can
+be changed in Settings; one that another program already holds is flagged there and in the
+tray menu.
+
+Every action is also a command for the running app: `voice-annotate snapshot`,
+`walkthrough`, `dictation`, `finish`, `toggle-draw`, `cancel`. Bind those in your desktop's
+keyboard settings if you prefer, or have to (see Wayland below).
+
+### What is different
+
+- **Transcription** uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper). With an
+  NVIDIA GPU, CUDA 12 and cuDNN 9 (`pip install nvidia-cublas-cu12 nvidia-cudnn-cu12` into
+  the same environment) it picks Large v3 Turbo; otherwise it runs on the CPU.
+- **Clipboard.** Windows and X11 have one clipboard item with several formats, so a capture
+  goes out as text plus a file list. Terminals paste the text, chat apps attach the files.
+- **Linux, X11.** The capture toolbar cannot be hidden from screen recording there, so it
+  shows up at the top of walkthrough keyframes; `capture.md` tells the agent what it is.
+  GNOME shows the tray icon only with the AppIndicator extension (Ubuntu ships it); without
+  a tray the app opens a small window with buttons instead.
+- **Linux, Wayland.** Wayland keeps apps from watching the keyboard, the pointer or the
+  screen. The app runs through XWayland in a reduced mode: Snapshot and Dictation work,
+  started from the tray or from desktop shortcuts bound to the commands above. Walkthrough
+  and hold-to-draw need an X11 session ("GNOME on Xorg", "Plasma (X11)").
+
+### Status
+
+The automated tests drive the real app with synthetic mouse and keyboard input on Windows
+Server and on Ubuntu under Xvfb (with and without a compositor), and run a real Whisper
+model. Not covered by them, so less certain: several displays, display scaling other than
+100%, the Wayland mode, and transcription on a GPU.
+
 ## Build
 
-Requires macOS 15+ on Apple Silicon and Xcode 16+ (Swift 6 toolchain).
+The macOS app requires macOS 15+ on Apple Silicon and Xcode 16+ (Swift 6 toolchain).
 
 ```bash
 make install   # build release, sign with your Apple Development identity, copy to ~/Applications
@@ -147,10 +218,22 @@ The binary also has developer commands, e.g. `.build/debug/VoiceAnnotate --help`
 `--test-screenshot [screen]`, `--test-walkthrough <seconds> [screen|all]`.
 `docs/demo/render.sh` regenerates the README images with the real pipeline.
 
+The Windows/Linux app (see [python/README.md](python/README.md)):
+
+```bash
+cd python
+pip install -e ".[dev]"
+python -m voice_annotate      # run from source
+pytest                        # core, pipeline and the capture state machine, headless
+```
+
 ## Stack
 
-Swift 6 · SwiftUI + AppKit · ScreenCaptureKit · AVFoundation · Core Graphics ·
+macOS: Swift 6 · SwiftUI + AppKit · ScreenCaptureKit · AVFoundation · Core Graphics ·
 WhisperKit (Core ML) · SwiftPM
+
+Windows and Linux: Python · Qt 6 (PySide6) · mss · PyAV (FFmpeg) · PortAudio ·
+faster-whisper (CTranslate2) · Win32 and Xlib for hotkeys and input
 
 ## License
 

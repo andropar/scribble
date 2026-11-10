@@ -15,6 +15,8 @@ from . import paths, video
 log = logging.getLogger(__name__)
 
 SAMPLE_RATE = video.SAMPLE_RATE
+#: Longest stretch of missing audio that is filled with silence.
+MAX_GAP_SECONDS = 5
 
 
 class MicrophoneError(RuntimeError):
@@ -64,7 +66,9 @@ def _open_sounddevice_stream(callback: Callable[..., None]) -> Any:
     last_error: Optional[Exception] = None
     for kwargs in ({"samplerate": SAMPLE_RATE, "channels": 1}, {}):
         try:
-            stream = sd.InputStream(dtype="float32", callback=callback, **kwargs)
+            # "high" latency means large buffers: a recording does not need to be real time,
+            # and few callbacks keep Python out of the audio thread's way.
+            stream = sd.InputStream(dtype="float32", latency="high", callback=callback, **kwargs)
             stream.start()
             return stream
         except Exception as error:  # sd.PortAudioError, ValueError for odd devices
@@ -84,37 +88,44 @@ class AudioRecorder:
         self._first_time: Optional[float] = None
         self._stream: Any = None
         self._rate = SAMPLE_RATE
+        self._started_at = 0.0
+        self._warned = False
         self.on_level: Optional[Callable[[float], None]] = None
 
     def start(self) -> None:
         with self._lock:
             self._chunks, self._count, self._first_time = [], 0, None
+            self._started_at = paths.now()
+            self._warned = False
         self._stream = self._open_stream(self._callback)
-        self._rate = int(round(float(getattr(self._stream, "samplerate", SAMPLE_RATE))))
+        reported = float(getattr(self._stream, "samplerate", SAMPLE_RATE) or SAMPLE_RATE)
+        self._rate = int(round(reported)) if 8_000 <= reported <= 384_000 else SAMPLE_RATE
         log.info("Recording microphone at %d Hz", self._rate)
 
     def _callback(self, indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
         now = paths.now()
         if status:
             log.debug("Audio status: %s", status)
-        # When the first sample of this buffer was captured.
-        latency = 0.0
-        try:
-            adc, current = float(time_info.inputBufferAdcTime), float(time_info.currentTime)
-            if adc > 0 and current > 0 and 0 <= current - adc < 1:
-                latency = current - adc
-        except (AttributeError, TypeError):
-            pass
-        if latency == 0.0:
-            latency = frames / float(self._rate)
-        buffer_time = now - latency
-
         mono = (
             indata[:, 0]
             if indata.ndim > 1 and indata.shape[1] == 1
-            else indata.reshape(frames, -1).mean(axis=1)
+            else indata.reshape(len(indata), -1).mean(axis=1)
         )
         mono = np.array(mono, dtype=np.float32)
+        # When the first sample of this buffer was captured: now minus the input latency.
+        # Drivers report that with varying care, so anything implausible is replaced by the
+        # length of the buffer, and the result is kept inside the recording's lifetime.
+        latency = None
+        try:
+            adc, current = float(time_info.inputBufferAdcTime), float(time_info.currentTime)
+            if adc > 0 and 0 <= current - adc < 1:
+                latency = current - adc
+        except (AttributeError, TypeError, ValueError):
+            pass
+        if latency is None:
+            latency = min(len(mono) / float(self._rate), 1.0)
+        buffer_time = min(max(now - latency, self._started_at - 1.0), now)
+
         with self._lock:
             if self._first_time is None:
                 self._first_time = buffer_time
@@ -122,9 +133,14 @@ class AudioRecorder:
                 # Audio missing since the last buffer (overflow, device hiccup) becomes
                 # silence, so word times stay aligned with the session clock.
                 gap = int((buffer_time - self._first_time) * self._rate) - self._count
-                if gap > self._rate // 10:
+                if self._rate // 10 < gap <= self._rate * MAX_GAP_SECONDS:
                     self._chunks.append(np.zeros(gap, dtype=np.float32))
                     self._count += gap
+                elif gap > self._rate * MAX_GAP_SECONDS and not self._warned:
+                    self._warned = True
+                    log.warning(
+                        "Ignoring an implausible gap of %.1f s in the microphone stream", gap / self._rate
+                    )
             self._chunks.append(mono)
             self._count += len(mono)
         if self.on_level is not None and len(mono):

@@ -220,6 +220,41 @@ def test_audio_recorder_fills_gaps_with_silence():
     assert np.count_nonzero(result.samples == 0) > 0.3 * 16_000
 
 
+def test_audio_recorder_survives_nonsense_from_the_driver(monkeypatch, caplog):
+    """Timing reported by audio drivers is not always sane. Whatever arrives, the result
+    stays inside the recording's lifetime and no absurd amount of silence is inserted."""
+    holder = {}
+
+    def opener(callback):
+        holder["stream"] = FakeStream(callback, 16_000)
+        holder["stream"].samplerate = 9.4e13  # a driver reporting garbage for the rate
+        return holder["stream"]
+
+    recorder = audio.AudioRecorder(open_stream=opener)
+    started = paths.now()
+    recorder.start()
+    assert recorder._rate == 16_000
+
+    class Garbage:
+        currentTime = 5.9e9
+        inputBufferAdcTime = 12.0
+
+    stream = holder["stream"]
+    stream.callback(np.full((160, 1), 0.2, dtype=np.float32), 93877995330813, Garbage, None)
+    stream.callback(np.full((160, 1), 0.2, dtype=np.float32), 160, None, None)
+    # The clock jumps (suspend, a debugger): hours of "missing" audio are not filled in.
+    real_now = paths.now
+    monkeypatch.setattr(paths, "now", lambda: real_now() + 7200)
+    with caplog.at_level("WARNING"):
+        stream.callback(np.full((160, 1), 0.2, dtype=np.float32), 160, None, None)
+        stream.callback(np.full((160, 1), 0.2, dtype=np.float32), 160, None, None)
+    monkeypatch.undo()
+    result = recorder.stop()
+    assert len(result.samples) == 640
+    assert started - 1.0 <= result.first_sample_time <= paths.now()
+    assert [r.message for r in caplog.records if "implausible gap" in r.message].__len__() == 1
+
+
 def test_audio_recorder_reports_missing_microphone():
     def opener(callback):
         raise audio.MicrophoneError("No microphone input available")

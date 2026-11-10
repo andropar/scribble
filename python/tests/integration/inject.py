@@ -167,7 +167,12 @@ class WindowsInjector(Injector):
         self._mouse(0x0004)
 
     def _key(self, name: str, up: bool) -> None:
-        vk = self._VK.get(name) or ord(name.upper())
+        if name in self._VK:
+            vk = self._VK[name]
+        elif name.startswith("F") and name[1:].isdigit():
+            vk = 0x70 + int(name[1:]) - 1
+        else:
+            vk = ord(name.upper())
         item = self._INPUT(type=1)
         item.u.ki = self._KEYBDINPUT(vk, 0, 0x0002 if up else 0, 0, 0)
         self._send(item)
