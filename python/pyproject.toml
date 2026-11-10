@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voice-annotate"
+version = "0.3.0"
+description = "Talk and draw on your screen, paste the result into any coding agent (Windows and Linux app)."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Johannes Roth" }]
+keywords = ["screenshot", "annotation", "whisper", "coding agents"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "PySide6-Essentials>=6.6",
+    "numpy>=1.23",
+    "mss>=9.0",
+    "sounddevice>=0.4.6",
+    "av>=11",
+    "faster-whisper>=1.1",
+    "python-xlib>=0.33; sys_platform == 'linux'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "black>=24"]
+# NVIDIA runtime libraries for GPU transcription (CTranslate2 needs cuBLAS and cuDNN 9).
+cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
+
+[project.scripts]
+voice-annotate = "voice_annotate.app:main"
+
+[project.gui-scripts]
+voice-annotate-gui = "voice_annotate.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/voice_annotate"]
+
+[tool.black]
+line-length = 110
+target-version = ["py39"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "model: needs a Whisper model download (set VOICE_ANNOTATE_TEST_MODEL=1)",
+    "desktop: needs a real desktop session (X11 or Windows), run with --desktop",
+]
