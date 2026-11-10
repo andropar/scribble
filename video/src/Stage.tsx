@@ -14,9 +14,15 @@ const tip = (m: Mark, p: number): Pt => {
 };
 
 const REST: Pt = { x: 760, y: 560 };
+const ENTER: Pt = { x: 1190, y: 250 };
 
 /** Cursor position: follows the stroke while drawing, glides to the next mark before it. */
 export const cursorAt = (t: number): Pt => {
+  // Before the shortcut (a lead-in, see Steps) the pointer drifts to its resting place.
+  if (t < 0) {
+    const e = Easing.inOut(Easing.cubic)(clamp01((t + 1.5) / 1.1));
+    return { x: ENTER.x + (REST.x - ENTER.x) * e, y: ENTER.y + (REST.y - ENTER.y) * e };
+  }
   let from = REST;
   for (const m of marks) {
     const move = 0.65;
@@ -130,7 +136,7 @@ export const Stage: React.FC<{
   const tx = Math.min(0, Math.max(width - CANVAS.w * s, width / 2 - shot.cx * s));
   const ty = Math.min(0, Math.max(height - CANVAS.h * s, height / 2 - shot.cy * s));
   return (
-    <div style={{ width, height, overflow: "hidden", borderRadius: 18, position: "relative", boxShadow: "0 30px 80px rgba(40,30,20,.28), 0 0 0 1px rgba(0,0,0,.08)" }}>
+    <div style={{ width, height, overflow: "hidden", borderRadius: 18, position: "relative", boxShadow: "0 18px 50px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.08)" }}>
       <div style={{ position: "absolute", width: CANVAS.w, height: CANVAS.h, transformOrigin: "0 0", transform: `translate(${tx}px, ${ty}px) scale(${s})` }}>
         <Img src={staticFile("screen.png")} style={{ width: CANVAS.w, height: CANVAS.h, display: "block" }} />
         <svg width={CANVAS.w} height={CANVAS.h} viewBox={`0 0 ${CANVAS.w} ${CANVAS.h}`} style={{ position: "absolute", inset: 0, filter: "drop-shadow(0 2px 3px rgba(0,0,0,.25))" }}>

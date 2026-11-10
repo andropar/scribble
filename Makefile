@@ -1,4 +1,4 @@
-.PHONY: app install run test clean release
+.PHONY: app install run test clean release icons
 
 app:
 	./scripts/build-app.sh
@@ -23,6 +23,14 @@ release:
 	rm -f build/voice-annotate-$(VERSION).zip
 	ditto -c -k --keepParent build/voice-annotate.app build/voice-annotate-$(VERSION).zip
 	shasum -a 256 build/voice-annotate-$(VERSION).zip
+
+# The icon is drawn by scripts/make-icon.swift. These are the copies checked in for the
+# README, the Windows and Linux app, the video and the website.
+icons:
+	swift scripts/make-icon.swift --png 256 docs/images/icon.png
+	swift scripts/make-icon.swift --png 256 python/src/voice_annotate/resources/icon.png
+	swift scripts/make-icon.swift --png 256 video/public/icon.png
+	swift scripts/make-icon.swift --png 512 site/assets/icon.png --bleed
 
 clean:
 	rm -rf .build build

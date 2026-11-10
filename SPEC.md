@@ -4,6 +4,9 @@ A macOS menu bar utility: press a hotkey, talk, point and draw on screen, and ge
 agent-ready bundle (annotated images + timestamped transcript with grounded references to
 every drawing) on the clipboard. Fully local, free, no API keys.
 
+Sections 1–10 describe the macOS app. Windows and Linux have a port with the same flows and
+the same bundle; §11 says how it is built and where it differs.
+
 ## 1. Goals
 
 - One hotkey to start, one to finish. No dialogs in the hot path.
@@ -22,8 +25,7 @@ every drawing) on the clipboard. Fully local, free, no API keys.
   prompt.
 - Bundle on the clipboard within ~2–4 s after finishing (model kept warm).
 
-Non-goals: cloud anything, editing past captures, translating the UI or transcripts,
-Windows/Linux.
+Non-goals: cloud anything, editing past captures, translating the UI or transcripts.
 
 ## 2. User flows
 
@@ -245,3 +247,62 @@ in that pause moves one word on.
   `maxInitialTimestamp`, the option meant to prevent this.
 - Auto-detect can differ from a fixed language around silence, where Whisper may also invent
   a phrase ("Thank you.", "Продолжение следует…").
+
+## 11. Windows and Linux
+
+A second implementation in `python/` (Python 3.9+, Qt 6 through PySide6), not a shared
+codebase: the macOS app is AppKit, ScreenCaptureKit and Core ML glue around a small core, and
+none of that glue exists elsewhere. What is shared is the behaviour. `voice_annotate.core` is
+a line-by-line port of `VoiceAnnotateCore`, its tests are the Swift tests, and a parity test
+feeds a capture's `events.json` from the macOS app through the port and expects the same
+`capture.md`, byte for byte.
+
+| | macOS | Windows / Linux |
+|---|---|---|
+| UI | AppKit + SwiftUI | Qt widgets (`ui/`) |
+| Screen | ScreenCaptureKit | `mss`: GDI on Windows, X11 `GetImage` on Linux |
+| Recording | HEVC via AVAssetWriter | H.264 via PyAV, real timestamps (variable frame rate) |
+| Audio | AVAudioEngine | PortAudio (`sounddevice`), AAC via PyAV |
+| Transcription | WhisperKit (Core ML) | faster-whisper (CTranslate2): CPU, or CUDA |
+| Hotkeys | Carbon `RegisterEventHotKey` | `RegisterHotKey` / X11 passive key grabs |
+| Rendering | Core Graphics | QPainter (same geometry, shadows approximated) |
+| Settings | UserDefaults | `~/.voice-annotate/settings.json` |
+
+Everything the app needs from the OS beyond Qt sits behind `platform.Platform`: global
+hotkeys, pointer and modifier state while other apps have focus, click-through, keeping a
+window out of screen capture, handing keyboard focus back, launch at login.
+
+Differences that follow from the platforms:
+
+- **Shortcuts** default to `Ctrl+Alt+Shift` + `S` / `W` / `T` / `F` / `D` (Walkthrough is `W`:
+  GNOME reserves `Ctrl+Alt+Shift+R`). A shortcut another program holds is reported in the
+  tray menu and in Settings instead of silently not working.
+- **Triggers.** Every action is also a command (`voice-annotate snapshot`, `walkthrough`,
+  `dictation`, `finish`, `toggle-draw`, `cancel`) that the running instance executes, so a
+  desktop's own shortcut settings can drive the app.
+- **Clipboard.** One item with several formats instead of several items: the markdown as
+  text plus a file list (`CF_HDROP`; `text/uri-list` and `x-special/gnome-copied-files`).
+- **Clicks and hold-to-draw** come from polling pointer and modifier state 60 times a second
+  (`GetAsyncKeyState`, `XQueryPointer`): no keyboard or mouse hooks.
+- **Recording.** A thread per display grabs about ten frames a second; a frame identical to
+  the previous one is skipped, the others are encoded with their capture time and sampled as
+  thumbnails. Screen grabs do not contain the pointer, so it is drawn into the frames.
+- **Audio.** PortAudio delivers the microphone in blocks of a tenth of a second. What a
+  driver reports about timing is only used where it is plausible: buffer times are kept
+  inside the recording's lifetime, and gaps longer than five seconds are not filled with
+  silence. Sound cues are WAV files played by the system, not through PortAudio.
+- **The toolbar in recordings.** Windows hides it from capture (`WDA_EXCLUDEFROMCAPTURE`).
+  X11 cannot, so it is visible in walkthrough keyframes and `capture.md` says what it is.
+- **No compositor (some X11 setups).** A translucent overlay would be opaque, so the
+  Walkthrough overlay is cut to the shape of the marks and grabs the pointer while drawing.
+- **Transcription model.** Auto picks Large v3 Turbo on a working NVIDIA GPU and Small English
+  on the CPU. CUDA is probed in a child process first: a broken CUDA setup aborts the process
+  it is loaded in instead of raising.
+- **Wayland** does not let an app watch the keyboard, the pointer or the screen. The app runs
+  through XWayland in a reduced mode: Snapshot (screenshot from `grim`, the desktop portal,
+  `spectacle` or `gnome-screenshot`) and Dictation, started from the tray or from desktop
+  shortcuts bound to the triggers. No Walkthrough, no hold-to-draw.
+
+Tests: `pytest` runs the core, the pipeline and the whole capture state machine headless
+(fake screen and microphone, real overlays). `pytest --desktop` drives a real session with
+synthetic input; CI runs it on Windows and under Xvfb, with and without a compositor.

@@ -6,3 +6,11 @@ DerivedData/
 .DS_Store
 docs/demo/screen.png
 docs/demo/narration.aiff
+
+# Python (Windows/Linux app)
+python/.venv/
+python/dist/
+python/build/
+__pycache__/
+*.egg-info/
+.pytest_cache/

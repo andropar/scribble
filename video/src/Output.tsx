@@ -37,7 +37,7 @@ const tone = (s: Seg): React.CSSProperties => {
   }
   switch (s.tone) {
     case "head": return { color: "white", fontWeight: 700 };
-    case "dim": return { color: "#85828e" };
+    case "dim": return { color: "#8b8b94" };
     case "time": return { color: "#ffd479" };
     case "file": return { color: "#7ee0b5" };
     default: return {};
@@ -72,12 +72,12 @@ export const Output: React.FC = () => {
         Each mark is cited at the moment you drew it, in image pixels.
       </div>
       <div style={{ position: "absolute", left: 1110, top: 80, width: 750, opacity: panel, transform: `translateX(${(1 - panel) * 120}px)` }}>
-        <div style={{ background: theme.dark, borderRadius: 16, overflow: "hidden", boxShadow: "0 30px 80px rgba(40,30,20,.3)" }}>
-          <div style={{ height: 44, background: "#2a292e", display: "flex", alignItems: "center", gap: 9, padding: "0 18px" }}>
+        <div style={{ background: theme.dark, borderRadius: 16, overflow: "hidden", boxShadow: "0 18px 50px rgba(0,0,0,.18)" }}>
+          <div style={{ height: 44, background: "#1c1c1f", display: "flex", alignItems: "center", gap: 9, padding: "0 18px" }}>
             {["#ff5f57", "#febc2e", "#28c840"].map((c) => <div key={c} style={{ width: 13, height: 13, borderRadius: 7, background: c }} />)}
-            <span style={{ marginLeft: 12, fontSize: 17, color: "#9b98a3" }}>capture.md</span>
+            <span style={{ marginLeft: 12, fontSize: 17, color: "#a1a1aa" }}>capture.md</span>
           </div>
-          <div style={{ padding: "22px 26px 26px", fontFamily: theme.mono, fontSize: 21.5, lineHeight: 1.62, color: "#d9d6de", minHeight: 860 }}>
+          <div style={{ padding: "22px 26px 26px", fontFamily: theme.mono, fontSize: 21.5, lineHeight: 1.62, color: "#e4e4e7", minHeight: 860 }}>
             {LINES.map((line, i) => {
               const a = interpolate(t, [lineTime(i), lineTime(i) + 0.18], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
               return (

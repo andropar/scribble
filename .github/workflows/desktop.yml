@@ -1,0 +1,286 @@
+name: Windows and Linux app
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+    paths: ["python/**", ".github/workflows/desktop.yml"]
+  pull_request:
+    paths: ["python/**", ".github/workflows/desktop.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Windows · Python 3.12", os: windows-latest, python: "3.12" }
+          - { name: "Windows · Python 3.9", os: windows-2022, python: "3.9" }
+          - { name: "Linux X11 · Python 3.12", os: ubuntu-24.04, python: "3.12", compositor: "0" }
+          - { name: "Linux X11 with compositor · Python 3.9", os: ubuntu-22.04, python: "3.9", compositor: "1" }
+          - name: "Linux X11 at 150% · Python 3.12"
+            os: ubuntu-24.04
+            python: "3.12"
+            compositor: "1"
+            desktop_only: true
+            screen: 2880x1620x24
+            scale_factor: "1.5"
+    defaults:
+      run:
+        working-directory: python
+        shell: bash
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test folders
+        run: |
+          echo "VOICE_ANNOTATE_ARTIFACTS=$RUNNER_TEMP/artifacts" >> "$GITHUB_ENV"
+          echo "VOICE_ANNOTATE_TEST_HOME=$RUNNER_TEMP/va-home" >> "$GITHUB_ENV"
+          echo "VOICE_ANNOTATE_SPEECH=$RUNNER_TEMP/speech.wav" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: python/pyproject.toml
+
+      - name: Install system packages (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb x11-utils openbox picom xclip espeak-ng \
+            libportaudio2 pulseaudio pulseaudio-utils libasound2-plugins \
+            libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-dejavu-core \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxcb-randr0 libxcb-xfixes0
+
+      - name: Install the app
+        run: python -m pip install -e ".[dev]"
+
+      - name: Check formatting
+        if: matrix.python == '3.12' && runner.os == 'Linux'
+        run: |
+          python -m pip install black==26.10.1
+          python -m black --check src tests
+
+      - name: Headless tests (core, pipeline, app state machine)
+        if: ${{ !matrix.desktop_only }}
+        run: python -m pytest -q -o faulthandler_timeout=300
+
+      - name: Speech sample (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' && !matrix.desktop_only }}
+        run: espeak-ng -v en-us -s 140 -w "$VOICE_ANNOTATE_SPEECH" "This button is broken. Please move the legend below the chart."
+
+      - name: Speech sample (Windows)
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $voice.SetOutputToWaveFile($env:VOICE_ANNOTATE_SPEECH)
+          $voice.Speak("This button is broken. Please move the legend below the chart.")
+          $voice.Dispose()
+
+      - name: Cache the Whisper test model
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/va-home/models
+          key: whisper-tiny-en-v1
+
+      - name: Transcription tests (real Whisper model)
+        if: ${{ !cancelled() && !matrix.desktop_only }}
+        env:
+          VOICE_ANNOTATE_TEST_MODEL: "1"
+        run: python -m pytest -q -m model -o faulthandler_timeout=600
+
+      - name: Virtual microphone (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        continue-on-error: true
+        run: |
+          printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > ~/.asoundrc
+          pulseaudio --start --exit-idle-time=-1
+          pactl unload-module module-suspend-on-idle || true
+          pactl load-module module-null-sink sink_name=virtual
+          pactl set-default-sink virtual
+          pactl set-default-source virtual.monitor
+          python -c "import sounddevice as sd; print(sd.query_devices())"
+
+      - name: Virtual sound card (Windows)
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        continue-on-error: true
+        uses: LABSN/sound-ci-helpers@v1
+
+      - name: Desktop tests (Linux, Xvfb)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 15
+        env:
+          COMPOSITOR: ${{ matrix.compositor }}
+          SCREEN: ${{ matrix.screen }}
+          QT_SCALE_FACTOR: ${{ matrix.scale_factor }}
+          VOICE_ANNOTATE_LOOPBACK: "1"
+        run: |
+          # An unset matrix value arrives as an empty variable; Qt must not see those.
+          for name in SCREEN QT_SCALE_FACTOR; do
+            [ -n "${!name}" ] || unset "$name"
+          done
+          tests/integration/run_x11.sh -o faulthandler_timeout=240
+
+      - name: Desktop tests (Windows)
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        timeout-minutes: 15
+        run: python -m pytest --desktop tests/integration -v -o faulthandler_timeout=240
+
+      - name: Upload screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ strategy.job-index }}-${{ matrix.os }}-py${{ matrix.python }}
+          path: ${{ runner.temp }}/artifacts
+          if-no-files-found: ignore
+
+  package:
+    name: Download · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04]
+    defaults:
+      run:
+        working-directory: python
+        shell: bash
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/pyproject.toml
+
+      - name: Install system packages (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb espeak-ng libportaudio2 libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-dejavu-core \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxcb-randr0 libxcb-xfixes0
+
+      - name: Build
+        run: |
+          python -m pip install -e . pyinstaller
+          python packaging/build.py
+          du -sh dist/voice-annotate
+          ls -l dist
+
+      - name: Speech sample (Linux)
+        if: runner.os == 'Linux'
+        run: espeak-ng -v en-us -s 140 -w "$RUNNER_TEMP/speech.wav" "This button is broken. Please move the legend below the chart."
+
+      - name: Speech sample (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $voice.SetOutputToWaveFile("$env:RUNNER_TEMP\speech.wav")
+          $voice.Speak("This button is broken. Please move the legend below the chart.")
+          $voice.Dispose()
+
+      - name: Try the build (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python packaging/smoke_test.py dist/voice-annotate "$RUNNER_TEMP/speech.wav"
+
+      - name: Try the build (Windows)
+        if: runner.os == 'Windows'
+        run: python packaging/smoke_test.py dist/voice-annotate "$RUNNER_TEMP/speech.wav"
+
+      - name: Install from a wheel, as users do
+        run: |
+          python -m pip wheel . --no-deps -w "$RUNNER_TEMP/wheel"
+          python -m venv "$RUNNER_TEMP/venv"
+          if [ "$RUNNER_OS" = "Windows" ]; then bin="$RUNNER_TEMP/venv/Scripts"; else bin="$RUNNER_TEMP/venv/bin"; fi
+          (cd "$RUNNER_TEMP/wheel" && "$bin/python" -m pip install voice_annotate-*.whl)
+          "$bin/voice-annotate" --version
+          ls "$bin" | grep voice-annotate-gui
+          QT_QPA_PLATFORM=offscreen "$bin/voice-annotate" --render-demo "$RUNNER_TEMP/demo.png"
+          # The icon travels inside the package.
+          "$bin/python" -c "import os, voice_annotate; p = os.path.join(os.path.dirname(voice_annotate.__file__), 'resources', 'icon.png'); assert os.path.isfile(p), p"
+
+      - name: Try the installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = "dist\voice-annotate-windows-setup.exe"
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=autostart' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
+          $app = "$env:LOCALAPPDATA\Programs\voice-annotate"
+          & "$app\voice-annotate-cli.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "installed app does not run" }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\voice-annotate\voice-annotate.lnk")) { throw "no Start menu entry" }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          if ($run.'voice-annotate' -notlike "*voice-annotate.exe*") { throw "autostart entry missing" }
+          python packaging/smoke_test.py $app "$env:RUNNER_TEMP\speech.wav"
+          $u = Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
+          Start-Sleep 3
+          if (Test-Path "$app\voice-annotate.exe") { throw "uninstall left the app behind" }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          if ($run.'voice-annotate') { throw "uninstall left the autostart entry" }
+
+      - name: Try the installer (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          mkdir "$RUNNER_TEMP/unpacked" && tar -xzf dist/voice-annotate-linux-x86_64.tar.gz -C "$RUNNER_TEMP/unpacked"
+          "$RUNNER_TEMP/unpacked/voice-annotate/install.sh"
+          "$HOME/.local/bin/voice-annotate-cli" --version
+          grep -q "Exec=$HOME/.local/opt/voice-annotate/voice-annotate" "$HOME/.local/share/applications/voice-annotate.desktop"
+          test -f "$HOME/.local/share/icons/hicolor/256x256/apps/voice-annotate.png"
+          xvfb-run -a python packaging/smoke_test.py "$HOME/.local/opt/voice-annotate"
+          ls "$HOME/.local/opt/voice-annotate/_internal" | grep -i -E "portaudio|xcb-cursor" || echo "(portaudio and xcb-cursor are not bundled)"
+          "$HOME/.local/opt/voice-annotate/install.sh" --uninstall
+          test ! -e "$HOME/.local/opt/voice-annotate" && test ! -e "$HOME/.local/bin/voice-annotate"
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-annotate-${{ runner.os }}
+          path: |
+            python/dist/voice-annotate-windows-setup.exe
+            python/dist/voice-annotate-windows-x64.zip
+            python/dist/voice-annotate-linux-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          # Each system builds its own files; the patterns drop the ones that are not here.
+          files=(dist/voice-annotate-windows-setup.ex[e] dist/voice-annotate-windows-x64.zi[p] dist/voice-annotate-linux-x86_64.tar.g[z])
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber

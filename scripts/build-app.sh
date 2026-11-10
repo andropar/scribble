@@ -15,7 +15,7 @@ cp "$BIN" "$APP/Contents/MacOS/VoiceAnnotate"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 ICONSET="build/AppIcon.iconset"
-if [ ! -f build/AppIcon.icns ]; then
+if [ ! -f build/AppIcon.icns ] || [ scripts/make-icon.swift -nt build/AppIcon.icns ]; then
   rm -rf "$ICONSET"
   swift scripts/make-icon.swift "$ICONSET"
   iconutil -c icns "$ICONSET" -o build/AppIcon.icns
