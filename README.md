@@ -4,9 +4,15 @@
 
 <p align="center">
   <b>Talk and draw on your screen, paste the result into any coding agent.</b><br>
-  A macOS menu bar app (with a port for Windows and Linux) that turns "this thing here is
-  broken" into annotated screenshots and a transcript that says exactly which mark you meant,
-  and when. On-device, no API keys.
+  An app for macOS, Windows and Linux that turns "this thing here is broken" into annotated
+  screenshots and a transcript that says exactly which mark you meant, and when. On-device,
+  no API keys.
+</p>
+
+<p align="center">
+  <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip"><b>Download for macOS</b></a> ·
+  <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe"><b>Windows installer</b></a> ·
+  <a href="#windows-and-linux"><b>Linux</b></a>
 </p>
 
 ![Annotated screenshot of a training dashboard next to the capture.md an agent receives](docs/images/hero.png)
@@ -92,9 +98,9 @@ The full design is in [SPEC.md](SPEC.md).
 For Windows and Linux see [below](#windows-and-linux). The macOS app requires macOS 15 or
 later on Apple Silicon.
 
-1. Download `voice-annotate-<version>.zip` from
-   [Releases](https://github.com/andropar/voice-annotate/releases), unzip it and move
-   `voice-annotate.app` to Applications.
+1. Download
+   [voice-annotate-macos.zip](https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip),
+   unzip it and move `voice-annotate.app` to Applications.
 2. The app isn't notarized (that needs a paid Apple Developer ID), so macOS blocks the first
    launch. Open it once, click **Done**, then go to System Settings → Privacy & Security and
    click **Open Anyway** next to the voice-annotate message. Alternatively, in Terminal:
@@ -142,25 +148,38 @@ test checks that both produce the same file from the same capture.
 
 ### Install
 
-Needs Python 3.9 or later. With [uv](https://docs.astral.sh/uv/) (or `pipx install` with the
-same URL):
+**Windows** (10 or 11, 64-bit): download and run
+[voice-annotate-windows-setup.exe](https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe).
+It installs for your user without administrator rights and can start the app at login. The
+installer is not code-signed, so SmartScreen asks once: **More info** → **Run anyway**.
+
+**Linux** (x86_64, glibc 2.35 or newer, i.e. Ubuntu 22.04 and later):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/andropar/voice-annotate/master/python/packaging/install-linux.sh | sh
+```
+
+This puts the app in `~/.local/opt/voice-annotate` with a menu entry and a `voice-annotate`
+command in `~/.local/bin`; nothing needs root. Run the script again to update, or with
+`sh -s -- --uninstall` to remove it. The same files are in
+[voice-annotate-linux-x86_64.tar.gz](https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-linux-x86_64.tar.gz)
+if you would rather unpack it yourself and run `./install.sh`.
+
+Both downloads are self-contained (no Python needed) and are built and tried out by
+[GitHub Actions](.github/workflows/desktop.yml) from this source. The app puts an icon in
+the system tray; *Settings* has *Launch at login*. On the first start it downloads a Whisper
+model to `~/.voice-annotate/models` (Small English, ~480 MB, when it runs on the CPU).
+
+With Python 3.9 or later you can also install it as a package, with
+[uv](https://docs.astral.sh/uv/) or `pipx`:
 
 ```bash
 uv tool install "git+https://github.com/andropar/voice-annotate#subdirectory=python"
 ```
 
-On Linux, two system libraries have to be there first (Debian/Ubuntu names):
-
-```bash
-sudo apt install libportaudio2 libxcb-cursor0
-```
-
-Then start it with `voice-annotate` (on Windows, `voice-annotate-gui` starts it without a
-console window). It puts an icon in the system tray; *Settings* has *Launch at login*. On the first start it downloads a Whisper model to
-`~/.voice-annotate/models` (Small English, ~480 MB, when it runs on the CPU).
-
-For a machine without Python, `python/packaging/build.py` makes a self-contained folder
-with PyInstaller (see [python/README.md](python/README.md)).
+On Linux that route needs two system libraries (`sudo apt install libportaudio2
+libxcb-cursor0`). Start it with `voice-annotate` (on Windows, `voice-annotate-gui` starts it
+without a console window).
 
 ### Use
 

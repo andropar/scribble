@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>voice-annotate — Talk. Draw. Paste.</title>
+<meta name="description" content="Point at your screen while you talk. Your coding agent gets annotated screenshots and a transcript that cites every mark. Free, open source, runs on your machine. macOS, Windows, Linux.">
+<meta property="og:title" content="voice-annotate — Talk. Draw. Paste.">
+<meta property="og:description" content="Point at your screen while you talk. Your coding agent gets annotated screenshots and a transcript that cites every mark.">
+<meta property="og:image" content="assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="30" height="30"><span>voice-annotate</span></a>
+  <nav>
+    <a href="#how">How it works</a>
+    <a href="#modes">Modes</a>
+    <a href="#faq">Questions</a>
+    <a href="https://github.com/andropar/voice-annotate">GitHub</a>
+    <a class="nav-cta" href="#download">Download</a>
+  </nav>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">For Claude Code, Cursor, ChatGPT and every other agent</p>
+    <h1>Talk.<span class="red"> Draw.</span><span class="blue"> Paste.</span></h1>
+    <p class="lede">Explaining a UI problem in text takes longer than fixing it. Point at your screen while you talk, and your coding agent gets annotated screenshots plus a transcript that says exactly which mark you meant, and when.</p>
+    <div class="cta-row">
+      <a class="button primary" id="cta" href="#download"><span id="cta-label">Download free</span><small id="cta-note">macOS · Windows · Linux</small></a>
+      <a class="button ghost" href="#film">Watch the 30-second film</a>
+    </div>
+    <ul class="ticks">
+      <li>Runs on your machine</li>
+      <li>No account, no API key</li>
+      <li>Open source, MIT</li>
+    </ul>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="stage" id="stage" aria-label="Interactive demo: a dashboard screenshot you can draw on">
+      <img src="assets/screen.png" alt="A training dashboard with a few things wrong on it" draggable="false">
+      <canvas id="ink"></canvas>
+      <div class="hud" id="hud">
+        <span class="rec"></span><span class="time" id="time">00:00</span>
+        <i></i>
+        <button data-tool="ellipse" class="on" title="Circle" aria-label="Circle"><svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="7" ry="5"/></svg></button>
+        <button data-tool="box" title="Box" aria-label="Box"><svg viewBox="0 0 20 20"><rect x="3.5" y="5.5" width="13" height="9" rx="1.5"/></svg></button>
+        <button data-tool="arrow" title="Arrow" aria-label="Arrow"><svg viewBox="0 0 20 20"><path d="M5 15 14 6M16 4l-.8 6L10 4.8z"/></svg></button>
+        <button data-tool="pen" title="Pen" aria-label="Pen"><svg viewBox="0 0 20 20"><path d="M4 16c3-10 6 2 9-7 1.500-4 3-1 4-4"/></svg></button>
+        <i></i>
+        <button data-color="#ff3b30" class="swatch on" style="--c:#ff3b30" aria-label="Red"></button>
+        <button data-color="#0a84ff" class="swatch" style="--c:#0a84ff" aria-label="Blue"></button>
+        <button data-color="#ffcc00" class="swatch" style="--c:#ffcc00" aria-label="Yellow"></button>
+        <i></i>
+        <button id="replay" class="text" title="Play the demo again">Replay</button>
+      </div>
+      <p class="your-turn" id="your-turn">Your turn. Draw on the screen.</p>
+    </div>
+    <div class="paste" aria-live="polite">
+      <div class="paste-bar"><span>capture.md</span><span class="paste-hint">what your agent receives</span></div>
+      <p class="paste-body" id="transcript"><b>[00:00 · frame 1]</b> </p>
+    </div>
+  </div>
+</section>
+
+<section class="strip" id="how">
+  <h2>One hotkey in. One paste out.</h2>
+  <ol class="steps">
+    <li><span class="n">1</span><h3>Press the shortcut</h3><p>Your screen freezes, or keeps recording while you work. The microphone is on. No window to arrange, no dialog to click through.</p></li>
+    <li><span class="n">2</span><h3>Say it and point at it</h3><p>Circle the number that is wrong. Draw an arrow to where the button should go. Every mark gets a number, burned into the image.</p></li>
+    <li><span class="n">3</span><h3>Paste into your agent</h3><p>A few seconds later the clipboard holds the screenshots and a transcript with each mark cited at the word you were saying, with pixel coordinates.</p></li>
+  </ol>
+</section>
+
+<section class="proof">
+  <div class="proof-text">
+    <h2>“This thing here” finally means something.</h2>
+    <p>A bare screenshot loses the pointing. A voice memo loses the screen. voice-annotate keeps strokes, clicks, audio and frames on one clock, so the agent reads this:</p>
+    <blockquote>This best <code>[#1 circled (301,290)-(450,340) in frame 1]</code> accuracy says 312%. That has to be a units bug.</blockquote>
+    <p>It knows what you meant and where it is. No back-and-forth.</p>
+  </div>
+  <figure class="film" id="film">
+    <video src="assets/demo.mp4" poster="assets/poster.png" controls preload="none" playsinline></video>
+    <figcaption>34 seconds, no sound needed.</figcaption>
+  </figure>
+</section>
+
+<section class="modes" id="modes">
+  <div class="modes-head">
+    <h2>Three ways to show what you mean</h2>
+    <div class="os-switch" role="tablist" aria-label="Shortcuts for">
+      <button role="tab" data-os="mac" class="on">macOS</button>
+      <button role="tab" data-os="pc">Windows · Linux</button>
+    </div>
+  </div>
+  <div class="mode-grid">
+    <article>
+      <kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd>
+      <h3>Snapshot</h3>
+      <p>Freezes every display. Draw and talk over the frozen screen. Hide the overlay, navigate somewhere else, take the next shot, all in one capture.</p>
+    </article>
+    <article>
+      <kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd>
+      <h3>Walkthrough</h3>
+      <p>Records while you keep working. Hold a modifier to draw laser-pointer marks that fade. Agents cannot watch video, so the recording becomes a storyboard of up to 30 keyframes.</p>
+    </article>
+    <article>
+      <kbd data-mac="⌃⌥⌘T" data-pc="Ctrl+Alt+Shift+T">⌃⌥⌘T</kbd>
+      <h3>Dictation</h3>
+      <p>Voice only. The transcript lands on the clipboard as plain text, for the prompts you would rather say than type.</p>
+    </article>
+  </div>
+  <ul class="facts">
+    <li><b>Arrow, box, circle, highlighter, pin</b> make numbered marks. The pen is for sketches and stays exactly as drawn.</li>
+    <li><b>Several displays</b> are captured together. In a walkthrough the cursor decides which one a keyframe comes from.</li>
+    <li><b>4K and larger</b> screens get an extra native-resolution crop around your marks, so small text stays readable.</li>
+    <li><b>Light on the chat.</b> By default the clipboard carries the transcript and a file. Agents that read files open the images when they need them.</li>
+  </ul>
+</section>
+
+<section class="private">
+  <h2>Nothing leaves your machine.</h2>
+  <p>Transcription runs locally with Whisper: on the Neural Engine on a Mac, on the CPU or an NVIDIA GPU elsewhere. Captures live in a folder in your home directory and are deleted after 14 days. There is no server, no telemetry, and nothing to sign up for.</p>
+</section>
+
+<section class="download" id="download">
+  <h2>Download voice-annotate</h2>
+  <p class="price">Free. No trial, no tiers. <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT licensed</a>.</p>
+  <div class="dl-grid">
+    <article data-os="mac">
+      <h3>macOS</h3>
+      <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip">Download .zip</a>
+      <p class="req">macOS 15 or later, Apple Silicon</p>
+      <p class="note">Unzip, move to Applications. The app is not notarized, so on first launch choose <em>Open Anyway</em> under System Settings → Privacy &amp; Security.</p>
+    </article>
+    <article data-os="win">
+      <h3>Windows</h3>
+      <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe">Download installer</a>
+      <p class="req">Windows 10 or 11, 64-bit</p>
+      <p class="note">Installs for your user, no administrator rights. The installer is not code-signed, so SmartScreen asks once: <em>More info</em> → <em>Run anyway</em>.</p>
+    </article>
+    <article data-os="linux">
+      <h3>Linux</h3>
+      <div class="cmd"><code id="linux-cmd">curl -fsSL https://raw.githubusercontent.com/andropar/voice-annotate/master/python/packaging/install-linux.sh | sh</code><button id="copy" aria-label="Copy command">Copy</button></div>
+      <p class="req">x86_64, X11 session · <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-linux-x86_64.tar.gz">or get the .tar.gz</a></p>
+      <p class="note">Installs to <code>~/.local</code> with a menu entry. On Wayland, Snapshot and Dictation only, started from the tray or your own shortcuts.</p>
+    </article>
+  </div>
+  <p class="first-run">On first start the app downloads a speech model once (about 0.5 GB). After that it works offline.</p>
+</section>
+
+<section class="faq" id="faq">
+  <h2>Questions</h2>
+  <details><summary>Which agents does it work with?</summary><p>Anything you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
+  <details><summary>Is it really free?</summary><p>Yes. It is an open-source project under the MIT license. There is no paid version.</p></details>
+  <details><summary>Why does my system warn me when I open it?</summary><p>The downloads are not signed with a paid developer certificate, so macOS Gatekeeper and Windows SmartScreen ask for confirmation the first time. The source and the build scripts are public, and the Windows and Linux downloads are built by GitHub Actions from that source.</p></details>
+  <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac a one-minute recording takes about five seconds once the model has warmed up. On Windows and Linux it runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
+  <details><summary>Does it understand languages other than English?</summary><p>Not yet. Transcription is set to English.</p></details>
+  <details><summary>What is different on Windows and Linux?</summary><p>Same three modes and the same output, in a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. The Wayland mode is reduced and new; details are in the <a href="https://github.com/andropar/voice-annotate#windows-and-linux">README</a>.</p></details>
+</section>
+
+</main>
+
+<footer>
+  <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="24" height="24"><span>voice-annotate</span></a>
+  <p>Made by <a href="https://jroth.space">Johannes Roth</a> · <a href="https://github.com/andropar/voice-annotate">Source</a> · <a href="https://github.com/andropar/voice-annotate/issues">Report a problem</a></p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
