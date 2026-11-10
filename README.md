@@ -12,7 +12,8 @@
 <p align="center">
   <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip"><b>Download for macOS</b></a> ·
   <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe"><b>Windows installer</b></a> ·
-  <a href="#windows-and-linux"><b>Linux</b></a>
+  <a href="#windows-and-linux"><b>Linux</b></a> ·
+  <a href="https://jroth.space/voice-annotate/">Website</a>
 </p>
 
 ![Annotated screenshot of a training dashboard next to the capture.md an agent receives](docs/images/hero.png)
