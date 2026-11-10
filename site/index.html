@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>voice-annotate — Talk. Draw. Paste.</title>
+<title>voice-annotate — screen capture for coding agents</title>
 <meta name="description" content="Screen capture for coding agents. Draw on your screen while you talk, then paste annotated screenshots and a transcript into Claude Code, Cursor or ChatGPT. Free and open source for macOS, Windows and Linux.">
-<meta property="og:title" content="voice-annotate — Talk. Draw. Paste.">
+<meta property="og:title" content="voice-annotate — screen capture for coding agents">
 <meta property="og:description" content="Screen capture for coding agents. Draw on your screen while you talk, then paste annotated screenshots and a transcript.">
 <meta property="og:image" content="https://jroth.space/voice-annotate/assets/og.png">
 <meta property="og:url" content="https://jroth.space/voice-annotate/">
@@ -19,8 +19,8 @@
 </head>
 <body>
 
-<header class="nav">
-  <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="30" height="30"><span>voice-annotate</span></a>
+<header class="nav" id="nav">
+  <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="28" height="28"><span>voice-annotate</span></a>
   <nav>
     <a href="#how">How it works</a>
     <a href="#modes">Modes</a>
@@ -33,87 +33,204 @@
 <main id="top">
 
 <section class="hero">
-  <div class="hero-copy">
-    <p class="eyebrow">Works with Claude Code, Cursor, Codex and ChatGPT</p>
-    <h1>Talk.<span class="red"> Draw.</span><span class="blue"> Paste.</span></h1>
-    <p class="lede">Screen capture for coding agents. Draw on your screen while you talk, then paste. Your agent gets the annotated screenshots and a transcript that links each mark to what you were saying.</p>
-    <div class="cta-row">
-      <a class="button primary" id="cta" href="#download"><span id="cta-label">Download free</span><small id="cta-note">macOS · Windows · Linux</small></a>
-      <a class="button ghost" href="#film">Watch the demo</a>
-    </div>
-    <ul class="ticks">
-      <li>Runs on your machine</li>
-      <li>No account or API key</li>
-      <li>Free and open source</li>
+  <div class="hero-top">
+    <h1><img src="assets/icon.png" alt="" width="64" height="64">voice-annotate</h1>
+    <p class="lede"><strong>Screen capture for coding agents.</strong> Draw on your screen while you talk, then paste. Your agent gets the annotated screenshots and a transcript that links each mark to what you were saying.</p>
+    <ul class="keys" aria-label="Shortcuts">
+      <li><kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd><b>Snapshot</b><span>freeze the screen and draw on it</span></li>
+      <li><kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd><b>Walkthrough</b><span>record while you keep working</span></li>
+      <li><kbd data-mac="⌃⌥⌘T" data-pc="Ctrl+Alt+Shift+T">⌃⌥⌘T</kbd><b>Dictation</b><span>voice only</span></li>
     </ul>
+    <div class="cta">
+      <div class="cta-row">
+        <a class="button primary" id="cta" href="#download">Download</a>
+        <a class="button ghost" href="#how">How it works</a>
+      </div>
+      <p class="cta-note" id="cta-note">Free and open source. macOS, Windows and Linux.</p>
+    </div>
   </div>
 
-  <div class="stage-wrap">
-    <div class="stage" id="stage" aria-label="Interactive demo: a dashboard screenshot you can draw on">
-      <img src="assets/screen.png" alt="A training dashboard with a few things wrong on it" draggable="false">
-      <canvas id="ink"></canvas>
-      <div class="hud" id="hud">
-        <span class="rec"></span><span class="time" id="time">00:00</span>
-        <i></i>
-        <button data-tool="ellipse" class="on" title="Circle" aria-label="Circle"><svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="7" ry="5"/></svg></button>
-        <button data-tool="box" title="Box" aria-label="Box"><svg viewBox="0 0 20 20"><rect x="3.5" y="5.5" width="13" height="9" rx="1.5"/></svg></button>
-        <button data-tool="arrow" title="Arrow" aria-label="Arrow"><svg viewBox="0 0 20 20"><path d="M5 15 14 6M16 4l-.8 6L10 4.8z"/></svg></button>
-        <button data-tool="pen" title="Pen" aria-label="Pen"><svg viewBox="0 0 20 20"><path d="M4 16c3-10 6 2 9-7 1.500-4 3-1 4-4"/></svg></button>
-        <i></i>
-        <button data-color="#ff3b30" class="swatch on" style="--c:#ff3b30" aria-label="Red"></button>
-        <button data-color="#0a84ff" class="swatch" style="--c:#0a84ff" aria-label="Blue"></button>
-        <button data-color="#ffcc00" class="swatch" style="--c:#ffcc00" aria-label="Yellow"></button>
-        <i></i>
-        <button id="replay" class="text" title="Play the demo again">Replay</button>
+  <div class="demo" id="demo">
+    <div class="shot">
+      <div class="bar">
+        <span class="bar-title"><kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd>Snapshot</span>
+        <div class="tools" id="tools">
+          <button data-tool="ellipse" class="on" title="Circle" aria-label="Circle"><svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="7" ry="5"/></svg></button>
+          <button data-tool="box" title="Box" aria-label="Box"><svg viewBox="0 0 20 20"><rect x="3.5" y="5.5" width="13" height="9" rx="1.5"/></svg></button>
+          <button data-tool="arrow" title="Arrow" aria-label="Arrow"><svg viewBox="0 0 20 20"><path d="M5 15 14 6M15.5 4.5l-1 6.2-5.2-5.2z"/></svg></button>
+          <button data-tool="pen" title="Pen" aria-label="Pen"><svg viewBox="0 0 20 20"><path d="M3.5 15c3-9 5.5 1.5 8.5-6 1.3-3.2 3-1.5 4.5-4"/></svg></button>
+          <i></i>
+          <button data-color="#ff3b30" class="swatch on" style="--c:#ff3b30" aria-label="Red"></button>
+          <button data-color="#0a84ff" class="swatch" style="--c:#0a84ff" aria-label="Blue"></button>
+          <button data-color="#ffcc00" class="swatch" style="--c:#ffcc00" aria-label="Yellow"></button>
+        </div>
+        <button id="replay" class="replay" title="Play the capture again"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 1 0 1.8-4.1M4 3.5v3h3"/></svg>Replay</button>
       </div>
-      <p class="your-turn" id="your-turn">Try it: draw on the screenshot</p>
+      <div class="stage" id="stage">
+        <img src="assets/screen.png" alt="A training dashboard with four marks drawn on it: two circles, a box and an arrow" draggable="false">
+        <canvas id="ink"></canvas>
+        <div class="hud" aria-hidden="true"><span class="rec"></span><span id="time">0:19</span><span class="lv" id="lv"><i></i><i></i><i></i><i></i><i></i></span><span class="hud-mode">Snapshot<span id="count"> · #4</span></span></div>
+        <p class="your-turn" id="your-turn">Draw on the screenshot</p>
+      </div>
     </div>
-    <div class="paste" aria-live="polite">
-      <div class="paste-bar"><span>capture.md</span><span class="paste-hint">what your agent receives</span></div>
-      <p class="paste-body" id="transcript"><b>[00:00 · frame 1]</b> </p>
+    <div class="paste">
+      <div class="paste-in">
+        <div class="bar dark">
+          <span class="bar-title"><kbd data-mac="⌘V" data-pc="Ctrl+V">⌘V</kbd>capture.md</span>
+          <span class="bar-note">what your agent receives</span>
+        </div>
+        <div class="md" id="md">
+          <p class="md-h"># Screen capture · Snapshot · 0:19</p>
+          <p class="md-dim">Numbered marks (#1, #2, …) are the user's own annotations, cited where they were drawn.</p>
+          <p>- frame 1 · 1568×1018 · <span class="md-file">frame_01.png</span></p>
+          <p class="md-h">## Transcript</p>
+          <p id="transcript" aria-live="off"><span class="md-time">[00:00 · frame 1]</span> Okay. Quick review of the run dashboard. This best <mark class="cite">[#1 circled (301,290)-(450,340) in frame 1]</mark> accuracy says 312%. That has to be a units bug. It's probably multiplying by 100 twice. The legend <mark class="cite">[#2 circled (1241,634)-(1461,784) in frame 1]</mark> here sits right on top of the curves. Can we move it below the chart? And this export <mark class="cite b">[#3 box around (290,908)-(425,966) in frame 1]</mark> button is floating down here. It should go <mark class="cite b">[#4 arrow from (446,910) pointing at (809,230) in frame 1]</mark> up next to the filters.</p>
+        </div>
+        <div class="attach"><canvas id="thumb" width="144" height="94"></canvas><span>frame_01.png<small>1568 × 1018, with your marks</small></span></div>
+      </div>
     </div>
   </div>
+
+  <p class="works">
+    <span>Works with</span>
+    <span class="logo" title="Claude Code"><svg viewBox="0 0 24 24" role="img" aria-label="Claude Code"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg></span>
+    <span class="logo" title="Cursor"><svg viewBox="0 0 24 24" role="img" aria-label="Cursor"><path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"/></svg></span>
+    <span class="logo" title="Codex and ChatGPT"><svg viewBox="0 0 24 24" role="img" aria-label="Codex and ChatGPT"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></svg></span>
+    <span>and any other agent you can paste into</span>
+  </p>
 </section>
 
-<section class="strip" id="how">
-  <h2>How it works</h2>
-  <ol class="steps">
-    <li><span class="n">1</span><h3>Press the shortcut</h3><p>Snapshot freezes your screen. Walkthrough keeps recording while you work. The microphone turns on with both.</p></li>
-    <li><span class="n">2</span><h3>Draw and talk</h3><p>Circle the number that is wrong, or draw an arrow to where a button should go. Each mark gets a number on the screenshot.</p></li>
-    <li><span class="n">3</span><h3>Paste into your agent</h3><p>A few seconds later your clipboard has the screenshots and a transcript. Each mark is cited at the word you were saying, with its pixel coordinates.</p></li>
-  </ol>
-  <figure class="film" id="film">
-    <video src="assets/demo.mp4" poster="assets/poster.png" controls preload="none" playsinline></video>
-    <figcaption>34 seconds. Works without sound.</figcaption>
+<section class="how" id="how" data-frame>
+  <div class="how-copy">
+    <h2>How it <span data-mark="circle">works</span></h2>
+    <ol class="steps" id="steps">
+      <li class="on">
+        <button type="button" class="step-head"><span class="n">1</span>Press the shortcut</button>
+        <p><kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd> takes a Snapshot: your screen freezes so you can draw on it. <kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd> starts a Walkthrough and keeps recording while you work. The microphone turns on with both.</p>
+      </li>
+      <li>
+        <button type="button" class="step-head"><span class="n">2</span>Draw and talk</button>
+        <p>Circle the number that is wrong, or draw an arrow to where a button should go. Each mark gets a number on the screenshot. <kbd data-mac="↩" data-pc="Enter">↩</kbd> finishes the capture.</p>
+      </li>
+      <li>
+        <button type="button" class="step-head"><span class="n">3</span>Paste into your agent</button>
+        <p>A few seconds later your clipboard has the screenshots and a transcript. Paste with <kbd data-mac="⌘V" data-pc="Ctrl+V">⌘V</kbd>. Each mark is cited at the word you were saying, with its pixel coordinates.</p>
+      </li>
+    </ol>
+    <div class="os-switch" role="group" aria-label="Show shortcuts for">
+      <span>Shortcuts for</span>
+      <button type="button" data-os="mac" class="on">macOS</button>
+      <button type="button" data-os="pc">Windows · Linux</button>
+    </div>
+  </div>
+  <figure class="player" id="player">
+    <video id="film" src="assets/steps.mp4" poster="assets/steps-poster.jpg" muted loop playsinline preload="none" aria-label="A 25 second capture in three steps: the shortcut, drawing while talking, and the paste"></video>
+    <button type="button" class="pp" id="pp" aria-label="Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="i-pause" d="M6.5 4.5v11M13.5 4.5v11"/><path class="i-play" d="M6.5 4.2v11.6l9.5-5.8z"/></svg></button>
   </figure>
 </section>
 
-<section class="modes" id="modes">
-  <div class="modes-head">
-    <h2>Three <span data-mark="box" data-color="#0a84ff">capture</span> modes</h2>
-    <div class="os-switch" role="tablist" aria-label="Shortcuts for">
-      <button role="tab" data-os="mac" class="on">macOS</button>
-      <button role="tab" data-os="pc">Windows · Linux</button>
-    </div>
-  </div>
-  <div class="mode-grid">
-    <article>
-      <div class="mode-art"><svg viewBox="0 0 240 120" aria-hidden="true"><rect x="24" y="12" width="192" height="96" rx="8" fill="#fff" stroke="#e4e4e7"/><circle cx="36" cy="23" r="2.500" fill="#e4e4e7"/><circle cx="44" cy="23" r="2.500" fill="#e4e4e7"/><rect x="36" y="38" width="46" height="24" rx="4" fill="#f4f4f5"/><rect x="90" y="38" width="46" height="24" rx="4" fill="#f4f4f5"/><rect x="144" y="38" width="60" height="24" rx="4" fill="#f4f4f5"/><rect x="36" y="72" width="168" height="26" rx="4" fill="#fafafa"/><ellipse cx="59" cy="50" rx="30" ry="17" fill="none" stroke="#ff3b30" stroke-width="3"/><circle cx="31" cy="35" r="8" fill="#ff3b30" stroke="#fff" stroke-width="2"/><text x="31" y="38.500" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="sans-serif">1</text><path d="M150 88 180 58" stroke="#0a84ff" stroke-width="3" stroke-linecap="round"/><path d="m184 54-3 11-8-8z" fill="#0a84ff"/></svg></div>
-      <kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd>
-      <h3>Snapshot</h3>
-      <p>Freeze every display and draw on it while you talk. You can hide the overlay, switch to another window and take the next shot in the same capture.</p>
+<section class="modes" id="modes" data-frame>
+  <h2>Three <span data-mark="box" data-color="#0a84ff">capture</span> modes</h2>
+  <div class="bento">
+    <article class="mode snap">
+      <div class="art">
+        <svg viewBox="0 0 520 250" aria-hidden="true">
+          <rect x="96" y="20" width="372" height="186" rx="10" fill="#fff" stroke="#e4e4e7"/>
+          <text x="456" y="37" text-anchor="end" class="a-tag">frame 2</text>
+          <rect x="52" y="42" width="392" height="190" rx="10" fill="#fff" stroke="#d4d4d8"/>
+          <g fill="#e4e4e7"><circle cx="68" cy="57" r="3"/><circle cx="78" cy="57" r="3"/><circle cx="88" cy="57" r="3"/></g>
+          <text x="432" y="60" text-anchor="end" class="a-tag">frame 1</text>
+          <g fill="#fafafa" stroke="#ececef">
+            <rect x="68" y="72" width="112" height="46" rx="6"/>
+            <rect x="190" y="72" width="112" height="46" rx="6"/>
+            <rect x="312" y="72" width="116" height="46" rx="6"/>
+            <rect x="68" y="128" width="360" height="90" rx="6"/>
+          </g>
+          <g fill="#e4e4e7"><rect x="78" y="81" width="44" height="5" rx="2.5"/><rect x="200" y="81" width="36" height="5" rx="2.5"/><rect x="322" y="81" width="40" height="5" rx="2.5"/></g>
+          <g class="a-num"><text x="78" y="107">312.4%</text><text x="200" y="107">0.842</text><text x="322" y="107">186</text></g>
+          <g fill="none" stroke-width="1.6" stroke-linecap="round">
+            <path d="M82 140C128 186 210 200 414 204" stroke="#d4d4d8"/>
+            <path d="M82 146C128 192 214 205 414 208" stroke="#c4c4cc"/>
+            <path d="M82 152C126 197 216 209 414 211" stroke="#e0e0e4"/>
+          </g>
+          <rect x="352" y="146" width="64" height="36" rx="4" fill="#fff" stroke="#e4e4e7"/>
+          <path d="M360 156h10M360 164h10M360 172h10" stroke="#d4d4d8" stroke-width="2" stroke-linecap="round"/>
+          <g fill="#ececef"><rect x="375" y="154" width="32" height="4" rx="2"/><rect x="375" y="162" width="28" height="4" rx="2"/><rect x="375" y="170" width="34" height="4" rx="2"/></g>
+          <rect x="203" y="31" width="90" height="22" rx="11" fill="#111113"/>
+          <path d="M216.5 37.5v9M222.5 37.5v9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+          <text x="231" y="45.5" class="a-hudt">Snapshot</text>
+          <path class="a-draw sn-1" d="M70 101a42 17 0 1 0 84 0a42 17 0 1 0-84 0" pathLength="1" stroke="#ff3b30"/>
+          <g class="a-pop sn-1b"><circle cx="72" cy="84" r="9" fill="#ff3b30" stroke="#fff" stroke-width="2"/><text x="72" y="87.5" class="a-bn">1</text></g>
+          <path class="a-draw sn-2" d="M350 166 241 196.1" pathLength="1" stroke="#0a84ff"/>
+          <path class="a-pop sn-2h" d="M229 199.4l14.8 2.2-3.3-11.9z" fill="#0a84ff"/>
+          <g class="a-pop sn-2b"><circle cx="364" cy="162" r="9" fill="#0a84ff" stroke="#fff" stroke-width="2"/><text x="364" y="165.5" class="a-bn">2</text></g>
+        </svg>
+      </div>
+      <div class="mode-text">
+        <header><h3>Snapshot</h3><kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd></header>
+        <p>Freeze every display and draw on it while you talk. You can hide the overlay, switch to another window and take the next shot in the same capture.</p>
+      </div>
     </article>
-    <article>
-      <div class="mode-art"><svg viewBox="0 0 240 120" aria-hidden="true"><g font-family="monospace" font-size="8" fill="#71717a"><rect x="14" y="26" width="64" height="44" rx="5" fill="#fff" stroke="#e4e4e7"/><rect x="88" y="26" width="64" height="44" rx="5" fill="#fff" stroke="#e4e4e7"/><rect x="162" y="26" width="64" height="44" rx="5" fill="#fff" stroke="#e4e4e7"/><text x="14" y="84">00:04</text><text x="88" y="84">00:11</text><text x="162" y="84">00:19</text></g><rect x="22" y="34" width="26" height="6" rx="2" fill="#f4f4f5"/><rect x="96" y="34" width="38" height="6" rx="2" fill="#f4f4f5"/><rect x="170" y="34" width="20" height="6" rx="2" fill="#f4f4f5"/><path d="M26 58c8-10 14 6 22-4s12 2 18-4" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" opacity=".35"/><path d="M100 60c10-12 16 4 26-8" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" opacity=".7"/><ellipse cx="196" cy="54" rx="20" ry="10" fill="none" stroke="#0a84ff" stroke-width="3"/><path d="M14 98h212" stroke="#e4e4e7" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/><circle cx="46" cy="98" r="4" fill="#0a0a0a"/><circle cx="120" cy="98" r="4" fill="#0a0a0a"/><circle cx="194" cy="98" r="4" fill="#0a0a0a"/></svg></div>
-      <kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd>
-      <h3>Walkthrough</h3>
-      <p>Record while you keep working. Hold a modifier key to draw marks that fade like a laser pointer. Agents read images, not video, so the recording is turned into up to 30 keyframes.</p>
+    <article class="mode walk">
+      <div class="art">
+        <svg viewBox="0 0 520 250" aria-hidden="true">
+          <defs><clipPath id="wk-clip"><rect x="29" y="48" width="246" height="125"/></clipPath></defs>
+          <rect x="28" y="28" width="248" height="146" rx="9" fill="#fff" stroke="#d4d4d8"/>
+          <g fill="#e4e4e7"><circle cx="42" cy="38" r="2.6"/><circle cx="51" cy="38" r="2.6"/><circle cx="60" cy="38" r="2.6"/></g>
+          <path d="M28 47.5h248" stroke="#ececef"/>
+          <g clip-path="url(#wk-clip)">
+            <g class="wk-scroll">
+              <g fill="#f1f1f3"><rect x="44" y="58" width="16" height="16" rx="4"/><rect x="44" y="86" width="16" height="16" rx="4"/><rect x="44" y="114" width="16" height="16" rx="4"/><rect x="44" y="142" width="16" height="16" rx="4"/><rect x="44" y="170" width="16" height="16" rx="4"/><rect x="44" y="198" width="16" height="16" rx="4"/><rect x="44" y="226" width="16" height="16" rx="4"/></g>
+              <g fill="#e4e4e7"><rect x="70" y="60" width="118" height="5" rx="2.5"/><rect x="70" y="88" width="86" height="5" rx="2.5"/><rect x="70" y="116" width="132" height="5" rx="2.5"/><rect x="70" y="144" width="98" height="5" rx="2.5"/><rect x="70" y="172" width="124" height="5" rx="2.5"/><rect x="70" y="200" width="78" height="5" rx="2.5"/><rect x="70" y="228" width="110" height="5" rx="2.5"/></g>
+              <g fill="#f1f1f3"><rect x="70" y="69" width="64" height="4" rx="2"/><rect x="70" y="97" width="92" height="4" rx="2"/><rect x="70" y="125" width="54" height="4" rx="2"/><rect x="70" y="153" width="76" height="4" rx="2"/><rect x="70" y="181" width="60" height="4" rx="2"/><rect x="70" y="209" width="88" height="4" rx="2"/><rect x="70" y="237" width="50" height="4" rx="2"/></g>
+            </g>
+          </g>
+          <rect x="120" y="17" width="64" height="22" rx="11" fill="#111113"/>
+          <circle class="wk-rec" cx="134" cy="28" r="4" fill="#ff3b30"/>
+          <text x="144" y="31.5" class="a-hudt">0:12</text>
+          <path class="a-draw wk-laser" d="M150 100c16-16 30 10 46-2s20 6 36-8" pathLength="1" stroke="#0a84ff"/>
+          <g class="wk-cursor"><path d="M0 0v15l3.8-3.4 2.6 6 2.7-1.1-2.6-5.9h4.8z" fill="#0a0a0a" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></g>
+          <path d="M28 200h248" stroke="#e4e4e7" stroke-width="2" stroke-linecap="round"/>
+          <path class="a-draw wk-fill" d="M28 200h248" pathLength="1" stroke="#0a0a0a" stroke-width="2"/>
+          <g stroke="#0a0a0a" stroke-width="1.5"><circle class="wk-t wk-t1" cx="78" cy="200" r="4.5"/><circle class="wk-t wk-t2" cx="157" cy="200" r="4.5"/><circle class="wk-t wk-t3" cx="241" cy="200" r="4.5"/></g>
+          <g class="a-tag" text-anchor="middle"><text x="78" y="221">0:04</text><text x="157" y="221">0:11</text><text x="241" y="221">0:19</text></g>
+          <path d="M290 112h16m-5-5 5 5-5 5" fill="none" stroke="#a1a1aa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <g class="wk-k wk-k1">
+            <rect x="322" y="28" width="170" height="56" rx="8" fill="#fff" stroke="#d4d4d8"/>
+            <rect x="330" y="36" width="60" height="40" rx="4" fill="#fafafa" stroke="#ececef"/>
+            <g fill="#e4e4e7"><rect x="337" y="44" width="30" height="4" rx="2"/><rect x="337" y="53" width="40" height="4" rx="2"/><rect x="337" y="62" width="24" height="4" rx="2"/></g>
+            <text x="402" y="53" class="a-kf">frame 1</text><text x="402" y="68" class="a-tag">0:04</text>
+          </g>
+          <g class="wk-k wk-k2">
+            <rect x="322" y="92" width="170" height="56" rx="8" fill="#fff" stroke="#d4d4d8"/>
+            <rect x="330" y="100" width="60" height="40" rx="4" fill="#fafafa" stroke="#ececef"/>
+            <g fill="#e4e4e7"><rect x="337" y="108" width="30" height="4" rx="2"/><rect x="337" y="117" width="40" height="4" rx="2"/><rect x="337" y="126" width="24" height="4" rx="2"/></g>
+            <path d="M358 122c5-6 9 4 14-1s6 2 11-3" fill="none" stroke="#0a84ff" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="402" y="117" class="a-kf">frame 2</text><text x="402" y="132" class="a-tag">0:11 · marked</text>
+          </g>
+          <g class="wk-k wk-k3">
+            <rect x="322" y="156" width="170" height="56" rx="8" fill="#fff" stroke="#d4d4d8"/>
+            <rect x="330" y="164" width="60" height="40" rx="4" fill="#fafafa" stroke="#ececef"/>
+            <g fill="#e4e4e7"><rect x="337" y="172" width="36" height="4" rx="2"/><rect x="337" y="181" width="22" height="4" rx="2"/><rect x="337" y="190" width="42" height="4" rx="2"/></g>
+            <text x="402" y="181" class="a-kf">frame 3</text><text x="402" y="196" class="a-tag">0:19</text>
+          </g>
+        </svg>
+      </div>
+      <div class="mode-text">
+        <header><h3>Walkthrough</h3><kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd></header>
+        <p>Record while you keep working. Hold a modifier key to draw marks that fade like a laser pointer. Agents read images, not video, so the recording is turned into up to 30 keyframes.</p>
+      </div>
     </article>
-    <article>
-      <div class="mode-art"><svg viewBox="0 0 240 120" aria-hidden="true"><circle cx="30" cy="48" r="6" fill="#ff3b30"/><g stroke="#0a0a0a" stroke-width="4" stroke-linecap="round"><path d="M52 42v12M62 34v28M72 40v16M82 26v44M92 36v24M102 44v8M112 30v36M122 38v20M132 22v52M142 36v24M152 42v12M162 32v32M172 40v16M182 44v8M192 36v24M202 42v12"/></g><g font-family="monospace" font-size="9" fill="#71717a"><text x="24" y="100">“…rather say than type.”</text></g></svg></div>
-      <kbd data-mac="⌃⌥⌘T" data-pc="Ctrl+Alt+Shift+T">⌃⌥⌘T</kbd>
-      <h3>Dictation</h3>
-      <p>Voice only. Speak a prompt and paste it as plain text.</p>
+    <article class="mode dict">
+      <div class="mode-text">
+        <header><h3>Dictation</h3><kbd data-mac="⌃⌥⌘T" data-pc="Ctrl+Alt+Shift+T">⌃⌥⌘T</kbd></header>
+        <p>Voice only. Speak a prompt and paste it as plain text.</p>
+      </div>
+      <div class="art dict-art" aria-hidden="true">
+        <span class="wave"><b></b><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <svg class="dict-arrow" viewBox="0 0 24 12"><path d="M1 6h20m-5-5 5 5-5 5"/></svg>
+        <span class="prompt"><span class="typed">Move the legend below the chart.</span></span>
+      </div>
     </article>
   </div>
   <ul class="facts">
@@ -124,13 +241,17 @@
   </ul>
 </section>
 
-<section class="private">
-  <h2>Your captures stay on <span data-mark="circle">your computer</span></h2>
-  <p>Speech is transcribed on your device with Whisper. It uses the Neural Engine on a Mac, and the CPU or an NVIDIA GPU on Windows and Linux. Captures are saved to a folder in your home directory and deleted after 14 days. voice-annotate has no server and collects no usage data.</p>
+<section class="split private" data-frame>
+  <div class="split-head"><h2>Your captures stay on <span data-mark="highlight" data-color="#ffcc00">your computer</span></h2></div>
+  <dl class="spec">
+    <div><dt>Transcribed on your device</dt><dd>Speech is transcribed with Whisper. It runs on the Neural Engine on a Mac, and on the CPU or an NVIDIA GPU on Windows and Linux.</dd></div>
+    <div><dt>Deleted after 14 days</dt><dd>Captures are saved to a folder in your home directory.</dd></div>
+    <div><dt>No server</dt><dd>voice-annotate needs no account or API key and collects no usage data.</dd></div>
+  </dl>
 </section>
 
-<section class="faq" id="faq">
-  <h2>Questions</h2>
+<section class="split faq" id="faq" data-frame>
+  <div class="split-head"><h2>Questions</h2></div>
   <div class="faq-list">
   <details><summary>Which agents does it work with?</summary><p>Any agent you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
   <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac a one-minute recording takes about five seconds once the model has warmed up. On Windows and Linux it runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
@@ -139,27 +260,54 @@
   </div>
 </section>
 
-<section class="download" id="download">
-  <h2>Download voice-annotate</h2>
-  <p class="price"><span data-mark="line" data-color="#ffcc00">Free</span> and open source under the <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT license</a>.</p>
-  <div class="dl-grid">
-    <article data-os="mac">
-      <h3>macOS</h3>
-      <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip">Download .zip</a>
-      <p class="req">macOS 15 or later, Apple Silicon</p>
-      <p class="note">Unzip, move to Applications. The app is not notarized, so on first launch choose <em>Open Anyway</em> under System Settings → Privacy &amp; Security.</p>
+<section class="download" id="download" data-frame>
+  <div class="dl-head">
+    <div>
+      <h2>Download voice-annotate</h2>
+      <p class="price"><span data-mark="pen">Free</span> and open source under the <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT license</a>.</p>
+    </div>
+    <div class="os-tabs" id="os-tabs" role="tablist" aria-label="Operating system" hidden>
+      <button type="button" role="tab" data-os="mac" aria-selected="true">macOS</button>
+      <button type="button" role="tab" data-os="win" aria-selected="false">Windows</button>
+      <button type="button" role="tab" data-os="linux" aria-selected="false">Linux</button>
+    </div>
+  </div>
+  <div class="dl-panels">
+    <article class="dl" data-os="mac">
+      <div class="dl-get">
+        <h3>macOS</h3>
+        <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip">Download for macOS</a>
+        <p class="req">macOS 15 or later, Apple Silicon</p>
+      </div>
+      <ol class="dl-steps">
+        <li><b>Move it to Applications</b>Unzip the download and drag voice-annotate into your Applications folder.</li>
+        <li><b>Allow the first launch</b>The app is not notarized, so macOS blocks it once. Open it, then choose <em>Open Anyway</em> under System Settings → Privacy &amp; Security.</li>
+        <li><b>Grant two permissions</b>Allow Screen Recording when asked and reopen the app, then allow the Microphone.</li>
+      </ol>
     </article>
-    <article data-os="win">
-      <h3>Windows</h3>
-      <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe">Download installer</a>
-      <p class="req">Windows 10 or 11, 64-bit</p>
-      <p class="note">Installs for your user, no administrator rights. The installer is not code-signed, so SmartScreen asks once: <em>More info</em> → <em>Run anyway</em>.</p>
+    <article class="dl" data-os="win">
+      <div class="dl-get">
+        <h3>Windows</h3>
+        <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe">Download for Windows</a>
+        <p class="req">Windows 10 or 11, 64-bit</p>
+      </div>
+      <ol class="dl-steps">
+        <li><b>Run the installer</b>It installs for your user and needs no administrator rights.</li>
+        <li><b>Confirm SmartScreen</b>The installer is not code-signed, so Windows asks once: <em>More info</em> → <em>Run anyway</em>.</li>
+        <li><b>Find it in the tray</b>The app runs from an icon in the system tray. Its settings can start it at login.</li>
+      </ol>
     </article>
-    <article data-os="linux">
-      <h3>Linux</h3>
-      <div class="cmd"><code id="linux-cmd">curl -fsSL https://raw.githubusercontent.com/andropar/voice-annotate/master/python/packaging/install-linux.sh | sh</code><button id="copy" aria-label="Copy command">Copy</button></div>
-      <p class="req">x86_64, X11 session · <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-linux-x86_64.tar.gz">or get the .tar.gz</a></p>
-      <p class="note">Installs to <code>~/.local</code> with a menu entry. On Wayland, Snapshot and Dictation only, started from the tray or your own shortcuts.</p>
+    <article class="dl" data-os="linux">
+      <div class="dl-get">
+        <h3>Linux</h3>
+        <div class="cmd"><code id="linux-cmd">curl -fsSL https://raw.githubusercontent.com/andropar/voice-annotate/master/python/packaging/install-linux.sh | sh</code><button type="button" id="copy" aria-label="Copy command">Copy</button></div>
+        <p class="req">x86_64, Ubuntu 22.04 or newer · <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-linux-x86_64.tar.gz">or get the .tar.gz</a></p>
+      </div>
+      <ol class="dl-steps">
+        <li><b>Run the command</b>It installs to <code>~/.local</code> and adds a menu entry. Nothing needs root.</li>
+        <li><b>Start it from your app menu</b>The app runs from an icon in the system tray.</li>
+        <li><b>Check your session</b>Everything works on X11. On Wayland only Snapshot and Dictation do, started from the tray or your own shortcuts.</li>
+      </ol>
     </article>
   </div>
   <p class="first-run">On first start the app downloads a speech model once (about 0.5 GB). After that it works offline.</p>
