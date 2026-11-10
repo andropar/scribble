@@ -113,11 +113,11 @@
     });
 })();
 
-// The hero is a small working copy of the app. The finished capture is there from the
-// start; it then plays once (real word timings from the README demo) with the spoken words
-// lighting up in capture.md. Pointing at a reference shows its mark and the other way
-// round, and with a mouse you can add marks of your own. Coordinates are those of the
-// 1568 px wide frame the app would save.
+// The hero is a small working copy of the app. It shows the finished capture; Play runs it
+// once (real word timings from the README demo) with the spoken words lighting up in
+// capture.md. Pointing at a reference shows its mark and the other way round, and with a
+// mouse you can add marks of your own. Coordinates are those of the 1568 px wide frame the
+// app would save.
 (function () {
   "use strict";
   var CANVAS = { w: 1512, h: 982 };
@@ -579,14 +579,20 @@
     marks.forEach(function (m) {
       m.progress = 1;
     });
-    hud(LENGTH, false);
-    // The invitation to draw leaves again after a while.
+    hud(Math.ceil(LENGTH), false);
+    draw();
+  }
+
+  // The invitation to draw shows once, when the pointer first reaches the screenshot.
+  var invited = false;
+  stage.addEventListener("pointerenter", function (e) {
+    if (invited || playing || e.pointerType === "touch") return;
+    invited = true;
     hint.classList.add("show");
     setTimeout(function () {
       hint.classList.remove("show");
-    }, 7000);
-    draw();
-  }
+    }, 4000);
+  });
 
   function frame(now) {
     var t = ((now - startedAt) / 1000) * SPEED;
@@ -777,104 +783,305 @@
   function begin() {
     compose();
     fit();
-    hud(LENGTH, false);
+    finish();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
-    if (reduced || !("IntersectionObserver" in window)) {
-      finish();
-      return;
-    }
-    // Play once, when the demo is on screen.
-    var io = new IntersectionObserver(
-      function (entries) {
-        if (!entries[0].isIntersecting) return;
-        io.disconnect();
-        setTimeout(play, 300);
-      },
-      { threshold: 0.5 },
-    );
-    io.observe(stage);
   }
   if (img.complete) begin();
   else img.addEventListener("load", begin);
 })();
 
-// How it works: one clip, three steps. The step that is playing is highlighted and its
-// rail fills; choosing a step jumps there. The times are those in video/src/Steps.tsx.
+// How it works: the section is pinned while you scroll through it, and the scroll position
+// moves the three pictures: the shortcut, the capture, the paste. Nothing plays on its own.
 (function () {
   "use strict";
-  var STARTS = [0, 2.95, 17.4],
-    END = 24.6;
-  var film = document.getElementById("film");
-  var player = document.getElementById("player");
-  var items = document.querySelectorAll("#steps li");
-  if (!film || !items.length) return;
+  var how = document.getElementById("how");
+  if (!how || !how.querySelector(".scene")) return;
+  var pin = how.querySelector(".how-pin");
+  var items = how.querySelectorAll("#steps li");
+  var scenes = how.querySelectorAll(".scene");
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var wanted = !reduced; // false once the visitor pauses
-  var raf = 0;
+  var NAV = 57; // the bar the section is pinned under
+
+  function id(name) {
+    return document.getElementById(name);
+  }
+  function clamp(v) {
+    return Math.max(0, Math.min(1, v));
+  }
+  // 0 before a, 1 after b
+  function seg(q, a, b) {
+    return clamp((q - a) / (b - a));
+  }
+  function ease(v) {
+    return v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2;
+  }
+  function mix(a, b, t) {
+    return a + (b - a) * t;
+  }
+  function meter(bars, t, speaking) {
+    bars.forEach(function (bar, i) {
+      var level = speaking
+        ? 0.35 +
+          0.65 * Math.abs(Math.sin(t * 13 + i * 1.7) * Math.sin(t * 7.3 + i))
+        : 0.08;
+      bar.classList.toggle("on", i / 5 < level);
+    });
+  }
+
+  // 1. The keys go down one by one, the screen flashes and freezes, the capture bar drops in.
+  var keys1 = id("s1-keys"),
+    veil = id("s1-veil"),
+    hud1 = id("s1-hud"),
+    note1 = id("s1-note"),
+    cursor1 = id("s1-cursor");
+  function shortcut(q) {
+    var caps = keys1.children;
+    for (var i = 0; i < caps.length; i++)
+      caps[i].classList.toggle("down", q >= 0.12 + i * 0.07 && q < 0.5);
+    keys1.style.opacity = seg(q, 0.02, 0.08) * (1 - seg(q, 0.5, 0.58));
+    var flash = q < 0.5 ? seg(q, 0.44, 0.5) : 1 - seg(q, 0.5, 0.64);
+    veil.style.opacity = Math.max(
+      0.5 * seg(q, 0.02, 0.1) * (1 - seg(q, 0.42, 0.48)),
+      0.92 * flash,
+    );
+    var bar = seg(q, 0.6, 0.7);
+    hud1.style.opacity = bar;
+    hud1.style.transform = "translate(-50%," + (bar - 1) * 12 + "px)";
+    note1.style.opacity = seg(q, 0.68, 0.78);
+    var move = ease(seg(q, 0, 0.36));
+    cursor1.style.left = mix(76, 54, move) + "%";
+    cursor1.style.top = mix(26, 60, move) + "%";
+  }
+
+  // 2. The view moves in on what is being talked about while its mark is drawn. The words
+  //    under it light up as they are said.
+  var stage2 = scenes[1],
+    cam = id("s2-cam"),
+    cursor2 = id("s2-cursor"),
+    cap = id("s2-cap"),
+    time2 = id("s2-time"),
+    count2 = id("s2-count"),
+    bars2 = how.querySelectorAll("#s2-lv i");
+  var MARKS = [
+    { a: [290, 280], b: [434, 328], from: 0.1, to: 0.3, el: id("s2-m1") },
+    { a: [1197, 612], b: [1409, 756], from: 0.62, to: 0.82, el: id("s2-m2") },
+  ];
+  var SHOTS = [
+    { x: 362, y: 304, z: 2.3 },
+    { x: 1296, y: 690, z: 1.9 },
+  ];
+  var SAID = [
+    {
+      from: 0.03,
+      to: 0.42,
+      text: "This best | accuracy says 312%. That has to be a units bug.",
+    },
+    {
+      from: 0.5,
+      to: 0.94,
+      text: "The legend | here sits right on top of the curves.",
+    },
+  ];
+  SAID.forEach(function (line, n) {
+    var el = document.createElement("span");
+    el.className = "sent";
+    line.words = [];
+    line.text.split(" ").forEach(function (word) {
+      var span = document.createElement("span");
+      if (word === "|") {
+        span.className = "cchip";
+        span.textContent = "#" + (n + 1) + " circled";
+        line.chip = span;
+      } else {
+        span.className = "cw";
+        span.textContent = word;
+        line.words.push(span);
+      }
+      el.appendChild(span);
+      el.appendChild(document.createTextNode(" "));
+    });
+    line.el = el;
+    cap.appendChild(el);
+  });
+
+  function capture(q) {
+    var W = stage2.clientWidth,
+      H = stage2.clientHeight;
+    if (!W) return;
+    var u = W / 1512; // screen pixels per screenshot point at zoom 1
+    var move = ease(seg(q, 0.44, 0.6));
+    var z = mix(SHOTS[0].z, SHOTS[1].z, move);
+    var x = mix(SHOTS[0].x, SHOTS[1].x, move),
+      y = mix(SHOTS[0].y, SHOTS[1].y, move);
+    var tx = Math.min(0, Math.max(W - W * z, W / 2 - x * u * z));
+    var ty = Math.min(
+      0,
+      Math.max(H - W * (982 / 1512) * z, H * 0.42 - y * u * z),
+    );
+    cam.style.transform =
+      "translate(" + tx + "px," + ty + "px) scale(" + z + ")";
+    var px = 1 / (u * z); // screenshot points per screen pixel: keeps the ink 3 px wide
+
+    var tip = [760, 560],
+      drawn = 0;
+    MARKS.forEach(function (m, i) {
+      var p = ease(seg(q, m.from, m.to));
+      var c = [mix(m.a[0], m.b[0], p), mix(m.a[1], m.b[1], p)];
+      var shapes = m.el.querySelectorAll("ellipse");
+      m.el.style.display = p > 0 ? "" : "none";
+      for (var k = 0; k < 2; k++) {
+        shapes[k].setAttribute("cx", (m.a[0] + c[0]) / 2);
+        shapes[k].setAttribute("cy", (m.a[1] + c[1]) / 2);
+        shapes[k].setAttribute("rx", Math.max(0.1, (c[0] - m.a[0]) / 2));
+        shapes[k].setAttribute("ry", Math.max(0.1, (c[1] - m.a[1]) / 2));
+        shapes[k].setAttribute("stroke-width", (k ? 3 : 6) * px);
+      }
+      var pop = seg(q, m.to, m.to + 0.04);
+      if (pop >= 1) drawn = i + 1;
+      m.el
+        .querySelector(".badge")
+        .setAttribute(
+          "transform",
+          "translate(" +
+            (m.a[0] - 6 * px) +
+            " " +
+            (m.a[1] - 6 * px) +
+            ") scale(" +
+            px * pop +
+            ")",
+        );
+      // The pointer glides to the mark's first corner, then follows the drag.
+      var glide = ease(seg(q, m.from - 0.1, m.from));
+      if (glide > 0)
+        tip =
+          p > 0 ? c : [mix(tip[0], m.a[0], glide), mix(tip[1], m.a[1], glide)];
+    });
+    cursor2.setAttribute(
+      "transform",
+      "translate(" + tip[0] + " " + tip[1] + ") scale(" + px * 0.95 + ")",
+    );
+
+    var speaking = false;
+    SAID.forEach(function (line, n) {
+      var on = n === 0 ? q < 0.46 : q >= 0.46;
+      line.el.classList.toggle("on", on);
+      var at = seg(q, line.from, line.to) * line.words.length;
+      line.words.forEach(function (word, i) {
+        word.classList.toggle("said", i < at);
+      });
+      line.chip.classList.toggle("in", q >= MARKS[n].from);
+      if (on && at > 0 && at < line.words.length) speaking = true;
+    });
+    time2.textContent = "0:0" + Math.min(9, 3 + Math.floor(q * 7));
+    count2.textContent = drawn ? " · #" + drawn : "";
+    meter(bars2, q * 9, speaking);
+  }
+
+  // 3. Paste: the files and the transcript arrive in the agent's message box.
+  var keys3 = id("s3-keys"),
+    text3 = id("s3-text"),
+    send = id("s3-send");
+  var tokens = [];
+  (
+    "This best [#1 circled (301,290)-(450,340) in frame 1] accuracy says 312%. " +
+    "That has to be a units bug. The legend " +
+    "[#2 circled (1241,634)-(1461,784) in frame 1] here sits right on top of the curves."
+  )
+    .split(/(\[[^\]]+\])|\s+/)
+    .forEach(function (part) {
+      if (!part) return;
+      var span = document.createElement("span");
+      span.className = part.charAt(0) === "[" ? "pw pcite" : "pw";
+      span.textContent = part;
+      tokens.push(span);
+      text3.appendChild(span);
+      text3.appendChild(document.createTextNode(" "));
+    });
+  function paste(q) {
+    var caps = keys3.children;
+    for (var i = 0; i < caps.length; i++)
+      caps[i].classList.toggle("down", q >= 0.1 + i * 0.07 && q < 0.28);
+    keys3.style.opacity = seg(q, 0.02, 0.08) * (1 - seg(q, 0.28, 0.36));
+    id("s3-img").classList.toggle("in", q >= 0.26);
+    id("s3-md").classList.toggle("in", q >= 0.3);
+    var shown = seg(q, 0.32, 0.8) * tokens.length;
+    tokens.forEach(function (token, i) {
+      token.classList.toggle("in", i < shown);
+    });
+    send.classList.toggle("go", q >= 0.86);
+    id("s3-hint").classList.toggle("in", q >= 0.86);
+  }
+
+  var render = [shortcut, capture, paste];
+  var pinned = false;
+
+  // Pinning needs room for the whole section under the bar.
+  function decide() {
+    var room = window.innerHeight >= (window.innerWidth > 980 ? 640 : 540);
+    pinned = !reduced && room;
+    how.classList.toggle("pinned", pinned);
+  }
+
+  function distance() {
+    return how.offsetHeight - pin.offsetHeight;
+  }
 
   function update() {
-    var t = film.currentTime;
-    var active = t >= STARTS[2] ? 2 : t >= STARTS[1] ? 1 : 0;
+    if (!pinned) {
+      // Stacked: every picture in its final state.
+      items.forEach(function (li, i) {
+        li.classList.add("on");
+        li.style.setProperty("--p", 1);
+        render[i](1);
+      });
+      return;
+    }
+    var p = clamp((NAV - how.getBoundingClientRect().top) / distance());
+    var active = Math.min(2, Math.floor(p * 3));
+    var q = p >= 1 ? 1 : p * 3 - active;
     items.forEach(function (li, i) {
-      var from = STARTS[i],
-        to = i < 2 ? STARTS[i + 1] : film.duration || END;
       li.classList.toggle("on", i === active);
-      li.style.setProperty(
-        "--p",
-        Math.max(0, Math.min(1, (t - from) / (to - from))).toFixed(3),
-      );
+      li.style.setProperty("--p", i < active ? 1 : i === active ? q : 0);
+      scenes[i].classList.toggle("on", i === active);
     });
+    render[active](q);
   }
-  function loop() {
-    update();
-    raf = requestAnimationFrame(loop);
-  }
-  film.addEventListener("play", function () {
-    player.classList.remove("paused");
-    cancelAnimationFrame(raf);
-    loop();
-  });
-  film.addEventListener("pause", function () {
-    player.classList.add("paused");
-    cancelAnimationFrame(raf);
-    update();
-  });
-  film.addEventListener("seeked", update);
 
-  function start() {
-    var p = film.play();
-    if (p && p.catch) p.catch(function () {});
-  }
-  function toggle() {
-    wanted = film.paused;
-    if (film.paused) start();
-    else film.pause();
-  }
-  film.addEventListener("click", toggle);
-  document.getElementById("pp").addEventListener("click", toggle);
-
-  items.forEach(function (li, i) {
-    li.querySelector(".step-head").addEventListener("click", function () {
-      film.currentTime = STARTS[i] + 0.02;
-      wanted = true;
-      start();
+  var queued = false;
+  function onScroll() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function () {
+      queued = false;
       update();
     });
+  }
+
+  // Choosing a step scrolls to where it starts.
+  items.forEach(function (li, i) {
+    li.querySelector(".step-head").addEventListener("click", function () {
+      if (!pinned) return;
+      var top = window.scrollY + how.getBoundingClientRect().top - NAV;
+      window.scrollTo({
+        top: top + distance() * (i / 3 + 0.02),
+        behavior: "smooth",
+      });
+    });
   });
 
-  player.classList.add("paused");
-  if (!("IntersectionObserver" in window)) return;
-  // Plays while it is on screen.
-  new IntersectionObserver(
-    function (entries) {
-      if (entries[0].isIntersecting) {
-        if (wanted) start();
-      } else if (!film.paused) {
-        film.pause();
-      }
-    },
-    { threshold: 0.35 },
-  ).observe(player);
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", function () {
+    decide();
+    update();
+  });
+  // The key caps are rebuilt when the shortcut notation is switched.
+  how.querySelectorAll(".os-switch button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      requestAnimationFrame(update);
+    });
+  });
+  decide();
+  update();
 })();
 
 // The page reads as one more capture. Each section gets a transcript line with the time

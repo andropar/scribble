@@ -64,7 +64,7 @@
           <button data-color="#0a84ff" class="swatch" style="--c:#0a84ff" aria-label="Blue"></button>
           <button data-color="#ffcc00" class="swatch" style="--c:#ffcc00" aria-label="Yellow"></button>
         </div>
-        <button id="replay" class="replay" title="Play the capture again"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10a5.5 5.5 0 1 0 1.8-4.1M4 3.5v3h3"/></svg>Replay</button>
+        <button id="replay" class="replay" title="Play the capture"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="solid" d="M6.5 4.2v11.6l9.5-5.8z"/></svg>Play</button>
       </div>
       <div class="stage" id="stage">
         <img src="assets/screen.png" alt="A training dashboard with four marks drawn on it: two circles, a box and an arrow" draggable="false">
@@ -101,9 +101,10 @@
 </section>
 
 <section class="how" id="how" data-frame>
-  <div class="how-copy">
-    <h2>How it <span data-mark="circle">works</span></h2>
-    <ol class="steps" id="steps">
+  <div class="how-pin">
+    <div class="how-copy">
+      <h2>How it <span data-mark="circle">works</span></h2>
+      <ol class="steps" id="steps">
       <li class="on">
         <button type="button" class="step-head"><span class="n">1</span>Press the shortcut</button>
         <p><kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd> takes a Snapshot: your screen freezes so you can draw on it. <kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd> starts a Walkthrough and keeps recording while you work. The microphone turns on with both.</p>
@@ -117,16 +118,39 @@
         <p>A few seconds later your clipboard has the screenshots and a transcript. Paste with <kbd data-mac="⌘V" data-pc="Ctrl+V">⌘V</kbd>. Each mark is cited at the word you were saying, with its pixel coordinates.</p>
       </li>
     </ol>
-    <div class="os-switch" role="group" aria-label="Show shortcuts for">
+      <div class="os-switch" role="group" aria-label="Show shortcuts for">
       <span>Shortcuts for</span>
       <button type="button" data-os="mac" class="on">macOS</button>
       <button type="button" data-os="pc">Windows · Linux</button>
     </div>
+    </div>
+    <div class="scenes" id="scenes" aria-hidden="true">
+      <div class="scene s1 on">
+        <img class="scene-bg" src="assets/screen.png" alt="" draggable="false">
+        <div class="scene-veil" id="s1-veil"></div>
+        <svg class="scene-cursor" id="s1-cursor" viewBox="0 0 16 24"><path d="M0 0v20l5-4.5 3.5 8 3.5-1.5-3.4-7.8h6.4z"/></svg>
+        <div class="hud" id="s1-hud"><span class="rec"></span><span id="s1-time">0:00</span><span class="lv" id="s1-lv"><i></i><i></i><i></i><i></i><i></i></span><span class="hud-mode">Snapshot</span></div>
+        <kbd class="bigkeys" id="s1-keys" data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd>
+        <p class="scene-note" id="s1-note">Screen frozen, microphone on</p>
+      </div>
+      <div class="scene s2">
+        <div class="cam" id="s2-cam">
+          <img src="assets/screen.png" alt="" draggable="false">
+          <svg viewBox="0 0 1512 982" id="s2-ink"><g id="s2-m1"><ellipse class="under"/><ellipse class="ink"/><g class="badge"><circle r="11.5" fill="#fff"/><circle r="9.5" fill="#ff3b30"/><text y="4.4">1</text></g></g><g id="s2-m2"><ellipse class="under"/><ellipse class="ink"/><g class="badge"><circle r="11.5" fill="#fff"/><circle r="9.5" fill="#ff3b30"/><text y="4.4">2</text></g></g><path id="s2-cursor" d="M0 0v20l5-4.5 3.5 8 3.5-1.5-3.4-7.8h6.4z"/></svg>
+        </div>
+        <div class="hud" id="s2-hud"><span class="rec"></span><span id="s2-time">0:00</span><span class="lv" id="s2-lv"><i></i><i></i><i></i><i></i><i></i></span><span class="hud-mode">Snapshot<span id="s2-count"></span></span></div>
+        <p class="cap" id="s2-cap"></p>
+      </div>
+      <div class="scene s3">
+        <div class="composer">
+          <div class="chips"><span class="chip" id="s3-img"><img src="assets/screen.png" alt="">frame_01.png</span><span class="chip" id="s3-md">capture.md</span></div>
+          <p class="pasted" id="s3-text"></p>
+          <div class="composer-foot"><span id="s3-hint">Enter to send</span><b id="s3-send"><svg viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></b></div>
+        </div>
+        <kbd class="bigkeys" id="s3-keys" data-mac="⌘V" data-pc="Ctrl+V">⌘V</kbd>
+      </div>
+    </div>
   </div>
-  <figure class="player" id="player">
-    <video id="film" src="assets/steps.mp4" poster="assets/steps-poster.jpg" muted loop playsinline preload="none" aria-label="A 25 second capture in three steps: the shortcut, drawing while talking, and the paste"></video>
-    <button type="button" class="pp" id="pp" aria-label="Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="i-pause" d="M6.5 4.5v11M13.5 4.5v11"/><path class="i-play" d="M6.5 4.2v11.6l9.5-5.8z"/></svg></button>
-  </figure>
 </section>
 
 <section class="modes" id="modes" data-frame>
