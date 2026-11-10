@@ -26,10 +26,11 @@ if [ -n "${MONITORS:-}" ]; then
     output=none
     [ "$index" = 0 ] && output=screen
     geometry="${width}/$((width * 254 / 960))x${height}/$((height * 254 / 960))+${position%+*}+${position#*+}"
-    xrandr --setmonitor "MON$index" "$geometry" "$output"
+    xrandr --setmonitor "MON$index" "$geometry" "$output" && echo "monitor MON$index $geometry $output"
     index=$((index + 1))
   done
   xrandr --listmonitors
+  xrandr --listactivemonitors
 fi
 
 openbox &

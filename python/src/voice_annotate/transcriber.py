@@ -277,6 +277,12 @@ class Transcriber:
     def status(self) -> Status:
         return self._status
 
+    @property
+    def is_loading(self) -> bool:
+        """Whether a model is being downloaded or loaded right now."""
+        future = self._future
+        return future is not None and not future.done()
+
     def subscribe(self, listener: Callable[[Status], None]) -> None:
         """``listener`` is called from worker threads whenever the status changes."""
         self._listeners.append(listener)

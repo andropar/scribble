@@ -68,6 +68,26 @@ def _input_candidates(sd: Any) -> List[Any]:
     return candidates
 
 
+def _stream_variants(sd: Any, device: Any) -> List[dict]:
+    """Stream settings to try for a device, best first.
+
+    Blocks of a tenth of a second: PortAudio then drains the device on its own thread and
+    calls into Python ten times a second, instead of once per hardware period (a few
+    milliseconds with some drivers, which a Python callback cannot keep up with).
+    """
+    variants: List[dict] = [{"samplerate": SAMPLE_RATE, "channels": 1, "blocksize": SAMPLE_RATE // 10}]
+    try:
+        info = sd.query_devices(device, "input") if device is None else sd.query_devices(device)
+        rate = int(info.get("default_samplerate") or 0)
+        channels = max(1, min(2, int(info.get("max_input_channels") or 1)))
+        if rate > 0:
+            variants.append({"samplerate": rate, "channels": channels, "blocksize": rate // 10})
+    except Exception as error:
+        log.debug("Could not query audio device %s: %s", device, error)
+    variants += [{"samplerate": SAMPLE_RATE, "channels": 1}, {}]
+    return variants
+
+
 def _open_sounddevice_stream(callback: Callable[..., None]) -> Any:
     """Opens an input stream, preferring 16 kHz mono and falling back to the device's own
     format (which is then converted when recording stops)."""
@@ -78,17 +98,9 @@ def _open_sounddevice_stream(callback: Callable[..., None]) -> Any:
             "Audio backend not available ({}). On Linux install PortAudio: "
             "sudo apt install libportaudio2".format(error)
         )
-    # "high" latency means large buffers: a recording does not need to be real time, and
-    # few callbacks keep Python out of the audio thread's way.
-    variants = (
-        {"samplerate": SAMPLE_RATE, "channels": 1, "latency": "high"},
-        {"latency": "high"},
-        {"samplerate": SAMPLE_RATE, "channels": 1},
-        {},
-    )
     first_error: Optional[Exception] = None
     for device in _input_candidates(sd):
-        for kwargs in variants:
+        for kwargs in _stream_variants(sd, device):
             try:
                 stream = sd.InputStream(device=device, dtype="float32", callback=callback, **kwargs)
                 stream.start()

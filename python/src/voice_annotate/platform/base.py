@@ -129,6 +129,10 @@ class Platform:
     def set_autostart(self, enabled: bool) -> None:
         raise NotImplementedError("Launch at login is not supported on this platform")
 
+    def flush_clipboard(self) -> None:
+        """Hands the clipboard contents over to the system, so they outlive this process
+        even if it does not shut Qt down in an orderly way."""
+
     def allow_foreground(self) -> None:
         """Called in a command line trigger process before it asks the running app to act,
         so the app may take the foreground on its behalf."""

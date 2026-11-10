@@ -236,6 +236,17 @@ def run_app(argv: List[str]) -> int:
     code = app.exec()
     server.close()
     hotkeys.shutdown()
+    finished = controller.wait_for_background(10)
+    if not finished or whisper.is_loading:
+        # A worker is still inside a native library (loading or downloading a model,
+        # transcribing). A normal interpreter exit can hang on that, so leave directly,
+        # after what an orderly shutdown would have done for the user.
+        log.info("Quitting while background work is still running")
+        platform.flush_clipboard()
+        logging.shutdown()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(code)
     return code
 
 
@@ -268,6 +279,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         from . import cli
 
         return cli.run(args)
+    if args and args != ["--verbose"]:
+        # Never start the app on arguments that were not meant for it.
+        sys.stderr.write(
+            "Unknown arguments {}\n\n{}".format(" ".join(args), USAGE.format(version=__version__))
+        )
+        return 2
     return run_app(argv)
 
 

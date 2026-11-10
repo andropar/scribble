@@ -734,11 +734,14 @@ class SessionController(QObject):
         self._threads.append(thread)
         thread.start()
 
-    def wait_for_background(self, timeout: float = 30) -> None:
-        """Waits for worker threads (processing, cleanup after a cancel) to end."""
+    def wait_for_background(self, timeout: float = 30) -> bool:
+        """Waits for worker threads (processing, cleanup after a cancel) to end. Returns
+        whether all of them did."""
+        deadline = paths.now() + timeout
         for thread in list(self._threads):
-            thread.join(timeout)
+            thread.join(max(0.0, deadline - paths.now()))
         self._threads = [t for t in self._threads if t.is_alive()]
+        return not self._threads
 
     def _make_session(self, mode: CaptureMode) -> Optional[CaptureSession]:
         displays = screens.displays()

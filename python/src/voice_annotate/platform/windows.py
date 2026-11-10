@@ -261,6 +261,13 @@ class WindowsPlatform(Platform):
         user32.SetForegroundWindow(_hwnd(widget))
         widget.setFocus(Qt.OtherFocusReason)
 
+    def flush_clipboard(self) -> None:
+        # Qt renders clipboard formats on demand; this makes Windows take a copy now.
+        try:
+            ctypes.WinDLL("ole32").OleFlushClipboard()
+        except OSError as error:
+            log.debug("OleFlushClipboard failed: %s", error)
+
     def allow_foreground(self) -> None:
         allow_set_foreground()
 

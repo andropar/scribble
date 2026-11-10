@@ -41,12 +41,23 @@ def main() -> int:
         work.mkdir(exist_ok=True)
         os.environ["VOICE_ANNOTATE_ICON"] = windows_icon(work / "voice-annotate.ico")
     PyInstaller.__main__.run(
-        [str(HERE / "voice-annotate.spec"), "--noconfirm", "--clean", "--distpath", str(dist), "--workpath", str(work)]
+        [
+            str(HERE / "voice-annotate.spec"),
+            "--noconfirm",
+            "--clean",
+            "--distpath",
+            str(dist),
+            "--workpath",
+            str(work),
+        ]
     )
     system = {"win32": "windows", "linux": "linux"}.get(sys.platform, sys.platform)
     name = "voice-annotate-{}-{}-{}".format(__version__, system, platform.machine().lower())
     archive = shutil.make_archive(
-        str(dist / name), "zip" if sys.platform == "win32" else "gztar", root_dir=dist, base_dir="voice-annotate"
+        str(dist / name),
+        "zip" if sys.platform == "win32" else "gztar",
+        root_dir=dist,
+        base_dir="voice-annotate",
     )
     sys.stdout.write("built {}\n".format(archive))
     return 0
