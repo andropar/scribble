@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
-from PySide6.QtCore import QPointF, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QKeyEvent, QMouseEvent, QPainter, QPaintEvent, QPixmap
 from PySide6.QtWidgets import QWidget
 
@@ -35,9 +35,6 @@ class AnnotationCanvas(QWidget):
     undo_requested = Signal()
     tool_selected = Signal(object)
     color_selected = Signal(int)
-    #: A press while the pointer is grabbed (see ``WalkthroughOverlay``), at a global position.
-    pressed_at = Signal(object)
-
     FADE_OUT_DURATION = 0.6
     PIN_EXTRA_HOLD = 2.0
     #: Padding around a mark's bounds that covers its badge, line width and shadow.
@@ -58,6 +55,9 @@ class AnnotationCanvas(QWidget):
         self.backdrop: Optional[QPixmap] = None
         #: Fill painted under the marks (None = nothing; see WalkthroughOverlay).
         self.background: Optional[QColor] = None
+        #: Called with the global position of a press; returning True swallows the press
+        #: (it belonged to the toolbar, see WalkthroughOverlay's pointer grab).
+        self.press_filter: Optional[Callable[[QPoint], bool]] = None
         self.annotations: List[Annotation] = []
         self._current: Optional[Annotation] = None
         self._fade_timer = QTimer(self)
@@ -121,7 +121,8 @@ class AnnotationCanvas(QWidget):
         return (min(max(p.x(), 0.0), float(self.width())), min(max(p.y(), 0.0), float(self.height())))
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        self.pressed_at.emit(event.globalPosition().toPoint())
+        if self.press_filter is not None and self.press_filter(event.globalPosition().toPoint()):
+            return
         if event.button() == Qt.RightButton:
             self.undo_requested.emit()
             return

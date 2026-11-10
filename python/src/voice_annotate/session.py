@@ -137,6 +137,7 @@ class SessionController(QObject):
         self._focus_token: Any = None
         self._last_cursor_display: Optional[int] = None
         self._left_was_down = False
+        self._next_raise = 0.0
         self._cursor = _CursorHolder()
         self._threads: List[threading.Thread] = []
         self._processing_toast: Optional[Tuple[str, Any]] = None
@@ -318,11 +319,15 @@ class SessionController(QObject):
         session.cursor_timeline = [(0.0, primary.index)]
         self._last_cursor_display = primary.index
         self._left_was_down = False
+        self._next_raise = 1.0
 
         for d in targets:
             overlay = WalkthroughOverlay(d, self.platform)
             self._configure(overlay, shot=0, screen=d.index, fade=self.settings.fade_seconds)
-            overlay.pressed_at.connect(self._on_grabbed_press)
+            if not overlay.composited:
+                # Without a compositor the overlay grabs the pointer while drawing, so a
+                # click on the toolbar arrives at the overlay and is passed on.
+                overlay.press_filter = self._toolbar_press
             self.overlays[d.index] = overlay
             overlay.present()
 
@@ -362,12 +367,8 @@ class SessionController(QObject):
         if self.hud is not None:
             self.hud.draw_toggled = not self.hud.draw_toggled
 
-    def _on_grabbed_press(self, global_pos: Any) -> None:
-        # Without a compositor the overlay grabs the pointer while drawing, so a click on
-        # the HUD arrives here and is passed on.
-        overlay = self.sender()
-        if isinstance(overlay, WalkthroughOverlay) and not overlay.composited and self.hud is not None:
-            self.hud.click_at(global_pos)
+    def _toolbar_press(self, global_pos: Any) -> bool:
+        return self.hud is not None and self.hud.click_at(global_pos)
 
     # MARK: Dictation
 
@@ -509,9 +510,21 @@ class SessionController(QObject):
                         ClickEvent(session.now(), display.canvas_point(x, y), display.index)
                     )
 
+        # Unmanaged X11 windows are not kept on top by the window manager: after another
+        # window was raised (typically by a click), put the overlays back above it.
+        if self.platform.name == "x11" and session.now() >= self._next_raise:
+            self._next_raise = session.now() + 1.0
+            self._raise_overlays()
+
         if session.now() >= self.settings.max_walkthrough_minutes * 60:
             self.toast.show_message("Maximum recording length reached", duration=2)
             self.finish()
+
+    def _raise_overlays(self) -> None:
+        for overlay in self.overlays.values():
+            overlay.raise_()
+        if self.hud is not None and self.hud.isVisible():
+            self.hud.raise_()
 
     def _over_hud(self, display: Display, x: float, y: float) -> bool:
         if self.hud is None or not self.hud.isVisible() or self._hud_display is not display:

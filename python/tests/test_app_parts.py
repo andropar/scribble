@@ -334,26 +334,18 @@ def test_key_names_map_to_native_codes():
     from voice_annotate.platform import x11
 
     names = ["S", "7", "F5", "F12", "Space", "Tab", "Return", "Left", "PageDown", "Delete"]
-    assert [x11.keysym_name(n) for n in names] == [
-        "s",
-        "7",
-        "F5",
-        "F12",
-        "space",
-        "Tab",
-        "Return",
-        "Left",
-        "Next",
-        "Delete",
-    ]
-    from Xlib import XK
+    assert all(key_name(k) for k in (Qt.Key_S, Qt.Key_7, Qt.Key_F5, Qt.Key_Space, Qt.Key_Left))
+    expected = ["s", "7", "F5", "F12", "space", "Tab", "Return", "Left", "Next", "Delete"]
+    assert [x11.keysym_name(n) for n in names] == expected
+    if sys.platform.startswith("linux"):
+        from Xlib import XK
 
-    assert all(XK.string_to_keysym(x11.keysym_name(n)) for n in names)
+        assert all(XK.string_to_keysym(x11.keysym_name(n)) for n in names)
     if sys.platform == "win32":
         from voice_annotate.platform import windows
 
         assert windows.virtual_key("S") == 0x53 and windows.virtual_key("F5") == 0x74
-        assert all(windows.virtual_key(n) for n in names)
+        assert all(windows.virtual_key(n) for n in names) and windows.virtual_key("Ü") is None
 
 
 class FakeBackend:

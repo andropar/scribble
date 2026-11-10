@@ -249,13 +249,20 @@ def _packets(container, stream, shift: int) -> Iterator[Tuple[float, object]]:
         yield float(packet.dts * packet.time_base), packet
 
 
+def _copy_stream(container, template):
+    """An output stream that takes packets of ``template`` as they are."""
+    if hasattr(container, "add_stream_from_template"):
+        return container.add_stream_from_template(template)
+    return container.add_stream(template=template)  # PyAV < 14
+
+
 def mux(video: PathLike, audio: PathLike, audio_offset: float, output: PathLike) -> None:
     """Muxes the screen video and the mic audio into one .mp4 without re-encoding.
     ``audio_offset`` = audio start − video start, in seconds."""
     with av.open(str(video)) as vin, av.open(str(audio)) as ain, av.open(str(output), mode="w") as out:
         v_in, a_in = vin.streams.video[0], ain.streams.audio[0]
-        v_out = out.add_stream_from_template(v_in)
-        a_out = out.add_stream_from_template(a_in)
+        v_out = _copy_stream(out, v_in)
+        a_out = _copy_stream(out, a_in)
         shift = int(round(audio_offset / a_in.time_base))
         v_iter = _packets(vin, v_in, 0)
         a_iter = _packets(ain, a_in, shift)

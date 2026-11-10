@@ -142,7 +142,7 @@ def test_snapshot_flow(app):
     assert controller.recents.items[0].folder == capture.folder
     mime = QGuiApplication.clipboard().mimeData()
     assert mime.text() == md
-    assert [u.toLocalFile() for u in mime.urls()] == [capture.markdown_path]
+    assert [Path(u.toLocalFile()) for u in mime.urls()] == [Path(capture.markdown_path)]
     assert (
         controller.toast.text == "Copied to clipboard"
         and "2 frames · 3 annotations" in controller.toast.detail
@@ -345,7 +345,7 @@ def test_recent_capture_can_be_copied_in_every_format(app):
     board = QGuiApplication.clipboard()
 
     def files():
-        return [u.toLocalFile() for u in board.mimeData().urls()]
+        return [str(Path(u.toLocalFile())) for u in board.mimeData().urls()]
 
     clipboard.write(capture, ClipboardFormat.UNIVERSAL)
     assert files() == [capture.markdown_path, frame] and board.mimeData().text() == md
