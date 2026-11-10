@@ -9,179 +9,29 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QGuiApplication, QPainter
-from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QColor, QGuiApplication
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
-import inject  # noqa: E402
-from fakes import FakeAudio, pump, wait_until  # noqa: E402
-from helpers import FakeTranscriber  # noqa: E402
+from fakes import pump, wait_until  # noqa: E402
+from support import ARTIFACTS, HYPER, close_to  # noqa: E402
 
-from voice_annotate import clipboard, paths, platform as platforms, render, screens, sounds  # noqa: E402
-from voice_annotate.clipboard import RecentsStore  # noqa: E402
+from voice_annotate import clipboard, paths, render  # noqa: E402
 from voice_annotate.core.models import AnnotationTool, CaptureMode  # noqa: E402
 from voice_annotate.processor import RecentCapture  # noqa: E402
-from voice_annotate.session import HUD_LEGEND_NOTE, Phase, SessionController  # noqa: E402
-from voice_annotate.settings import AppSettings, ClipboardFormat, Hotkey  # noqa: E402
+from voice_annotate.session import HUD_LEGEND_NOTE, Phase  # noqa: E402
+from voice_annotate.settings import ClipboardFormat, Hotkey  # noqa: E402
 
 pytestmark = [
     pytest.mark.desktop,
     pytest.mark.skipif(sys.platform == "darwin", reason="no input injection backend for macOS"),
 ]
-
-ARTIFACTS = Path(
-    os.environ.get("VOICE_ANNOTATE_ARTIFACTS") or tempfile.mkdtemp(prefix="voice-annotate-artifacts-")
-)
-ARTIFACTS.mkdir(parents=True, exist_ok=True)
-HYPER = ("ctrl", "alt", "shift")
-
-
-class Transcriber(FakeTranscriber):
-    class _Status:
-        is_ready, title = True, "ready"
-
-    status = _Status()
-
-    def subscribe(self, listener):
-        pass
-
-
-class Env:
-    def __init__(self) -> None:
-        self.platform = platforms.current()
-        self.grabber = screens.create_grabber(self.platform)
-        self.inject = inject.create()
-        self.displays = screens.displays()
-        self.display = self.displays[0]
-
-    def native(self, x: float, y: float):
-        """Canvas point on the first display → native position for the injector."""
-        d = self.display
-        return int(round(d.native[0] + x * d.dpr)), int(round(d.native[1] + y * d.dpr))
-
-    def move(self, x: float, y: float) -> None:
-        self.inject.move(*self.native(x, y))
-
-    def click(self, x: float, y: float) -> None:
-        self.move(x, y)
-        pump(0.15)
-        self.inject.press()
-        pump(0.12)
-        self.inject.release()
-        pump(0.15)
-
-    def drag(self, points) -> None:
-        self.move(*points[0])
-        pump(0.15)
-        self.inject.press()
-        pump(0.1)
-        for p in points[1:]:
-            self.move(*p)
-            pump(0.06)
-        self.inject.release()
-        pump(0.15)
-
-    def snap(self, name: str):
-        """Saves what is on the first display right now and returns the image."""
-        image = self.grabber.grab(self.display)
-        ARTIFACTS.mkdir(parents=True, exist_ok=True)
-        render.write_png(image, ARTIFACTS / "{}_{}.png".format(self.platform.name, name))
-        return image
-
-    def pixel(self, image, x: float, y: float):
-        c = image.pixelColor(int(round(x * self.display.dpr)), int(round(y * self.display.dpr)))
-        return c.red(), c.green(), c.blue()
-
-
-@pytest.fixture(scope="module")
-def env(qapp):
-    environment = Env()
-    yield environment
-    environment.inject.release_all()
-
-
-class AppWindow(QWidget):
-    """Stands in for the app the user is showing: a flat color that counts its clicks."""
-
-    def __init__(self, color: str, x: int, y: int, w: int, h: int, display) -> None:
-        super().__init__()
-        self.clicks = []
-        self._color = QColor(color)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
-        self.setWindowTitle("voice-annotate test target")
-        self.setGeometry(display.geometry.x() + x, display.geometry.y() + y, w, h)
-
-    def set_color(self, color: str) -> None:
-        self._color = QColor(color)
-        self.repaint()
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), self._color)
-        painter.end()
-
-    def mousePressEvent(self, event) -> None:
-        self.clicks.append((event.position().x(), event.position().y()))
-
-
-@pytest.fixture
-def target(env):
-    window = AppWindow("#2e6fd0", 0, 0, 900, 650, env.display)
-    window.show()
-    window.raise_()
-    window.activateWindow()
-    pump(0.4)
-    # A real click makes it the foreground window on every system (and, on Windows, lets
-    # this process take the foreground later, as a user-started app could).
-    env.click(880, 630)
-    assert wait_until(lambda: window.isActiveWindow(), 5), "test window did not get focus"
-    window.clicks.clear()
-    pump(0.3)
-    yield window
-    window.close()
-    pump(0.1)
-
-
-_controllers = []
-
-
-@pytest.fixture
-def controller(env, tmp_path, monkeypatch):
-    monkeypatch.setenv("VOICE_ANNOTATE_HOME", str(tmp_path / "home"))
-    sounds.enabled = False
-    c = SessionController(
-        AppSettings(),
-        RecentsStore(),
-        Transcriber(start=0.2, step=0.2),
-        env.platform,
-        env.grabber,
-        audio_factory=FakeAudio,
-    )
-    c.finished = []
-    c.capture_finished.connect(c.finished.append)
-    _controllers.append(c)
-    yield c
-    env.inject.release_all()
-    if c.phase.is_capturing:
-        c.cancel()
-    wait_until(lambda: c.phase == Phase.IDLE, 20)
-    c.wait_for_background()
-    c.toast.hide()
-    pump(0.2)
-
-
-def close_to(actual, expected, tolerance=3) -> bool:
-    return all(abs(a - e) <= tolerance for a, e in zip(actual, expected))
 
 
 # MARK: the platform backend
@@ -325,7 +175,7 @@ def test_snapshot_with_real_mouse_and_keyboard(env, target, controller):
     assert wait_until(lambda: overlay.tool == AnnotationTool.ARROW, 5), "toolbar click was not received"
     env.drag([(500, 500), (650, 350)])
     assert wait_until(lambda: len(controller.session.annotations) == 2, 5)
-    marked = env.snap("snapshot_marks")
+    env.snap("snapshot_marks")
     # The toolbar is still on top after drawing on the overlay.
     assert hud.isVisible()
     env.inject.key("Z", ("ctrl",))
@@ -418,8 +268,7 @@ def test_toolbar_is_on_screen_above_the_overlay(env, target, controller, monkeyp
 def test_walkthrough_with_real_mouse_and_keyboard(env, target, controller):
     controller.settings.set("fadeSeconds", 6.0)
     controller.start_walkthrough()
-    assert controller.phase == Phase.WALKTHROUGH
-    overlay = controller.overlays[env.display.index]
+    assert controller.phase == Phase.WALKTHROUGH and env.display.index in controller.overlays
     assert wait_until(lambda: not controller.hud.starting, 15), "recording did not start"
     pump(0.6)
     hud = controller.hud
@@ -626,12 +475,19 @@ def test_microphone_records_on_the_session_clock(env):
     # CI routes the default output back into the default input, so a tone played here must
     # come out of the recorder.
     loopback = os.environ.get("VOICE_ANNOTATE_LOOPBACK") == "1"
+    player = None
     if loopback:
-        import sounddevice as sd
+        import wave
 
-        t = np.arange(int(48_000 * 3)) / 48_000
-        sd.play((0.3 * np.sin(2 * np.pi * 440 * t)).astype(np.float32), 48_000)
-        pump(0.3)
+        tone = (0.3 * np.sin(2 * np.pi * 440 * np.arange(48_000 * 4) / 48_000) * 32767).astype("<i2")
+        path = ARTIFACTS / "tone.wav"
+        with wave.open(str(path), "wb") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(48_000)
+            f.writeframes(tone.tobytes())
+        player = subprocess.Popen(["paplay", str(path)])
+        pump(0.5)
     recorder = audio.AudioRecorder()
     levels = []
     recorder.on_level = levels.append
@@ -646,8 +502,8 @@ def test_microphone_records_on_the_session_clock(env):
     pump(1.5)
     result = recorder.stop()
     stopped = paths.now()
-    if loopback:
-        sd.stop()
+    if player is not None:
+        player.kill()
     sys.stdout.write(
         "\n[microphone] {} at {} Hz · {} buffers, first {} · {:.2f}s recorded\n".format(
             audio.input_device_name(), recorder._rate, len(buffers), buffers[:3], result.duration

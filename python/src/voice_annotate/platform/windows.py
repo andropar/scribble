@@ -8,7 +8,7 @@ import queue
 import subprocess
 import threading
 from ctypes import wintypes
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
@@ -27,6 +27,7 @@ WM_QUIT = 0x0012
 PM_NOREMOVE = 0
 MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN, MOD_NOREPEAT = 0x1, 0x2, 0x4, 0x8, 0x4000
 GWL_EXSTYLE = -20
+GWLP_HWNDPARENT = -8
 WS_EX_TRANSPARENT = 0x20
 WS_EX_LAYERED = 0x80000
 WDA_EXCLUDEFROMCAPTURE = 0x11
@@ -62,6 +63,7 @@ user32.GetAsyncKeyState.restype = ctypes.c_short
 user32.GetForegroundWindow.restype = wintypes.HWND
 user32.SetForegroundWindow.argtypes = [wintypes.HWND]
 user32.IsWindow.argtypes = [wintypes.HWND]
+user32.IsWindow.restype = wintypes.BOOL
 user32.SetWindowDisplayAffinity.argtypes = [wintypes.HWND, wintypes.DWORD]
 user32.SetWindowDisplayAffinity.restype = wintypes.BOOL
 user32.AllowSetForegroundWindow.argtypes = [wintypes.DWORD]
@@ -238,6 +240,14 @@ class WindowsPlatform(Platform):
     def exclude_from_capture(self, widget: QWidget) -> bool:
         # Windows 10 2004 and later; older systems return False and the HUD stays visible.
         return bool(user32.SetWindowDisplayAffinity(_hwnd(widget), WDA_EXCLUDEFROMCAPTURE))
+
+    def clear_owner(self, widget: QWidget) -> None:
+        # Windows destroys owned windows together with their owner. Qt only updates the
+        # owner when a window is shown, which is too late for a hidden toolbar.
+        _set_long(_hwnd(widget), GWLP_HWNDPARENT, 0)
+
+    def window_alive(self, widget: QWidget) -> bool:
+        return bool(user32.IsWindow(_hwnd(widget)))
 
     def remember_focus(self) -> Any:
         return user32.GetForegroundWindow()

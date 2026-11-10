@@ -7,11 +7,9 @@ is transparent and lets clicks through until draw mode is on.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from PySide6.QtCore import QRect, Qt, QTimer
 from PySide6.QtGui import QBitmap, QColor, QImage, QPainter, QPixmap, QRegion
-from PySide6.QtWidgets import QWidget
 
 from ..platform import Platform
 from ..screens import Display
@@ -66,6 +64,7 @@ class WalkthroughOverlay(AnnotationCanvas):
         self._platform = platform
         self._composited = platform.compositing()
         self._drawing = False
+        self._grabbing = False
         self.setWindowFlags(platform.overlay_flags() | Qt.WindowDoesNotAcceptFocus)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
@@ -109,16 +108,30 @@ class WalkthroughOverlay(AnnotationCanvas):
                 self.setCursor(Qt.CrossCursor)
             else:
                 self.unsetCursor()
-        elif drawing:
-            self._platform.set_click_through(self, False)
+        else:
+            # Cut to the shape of its marks, the window cannot receive clicks elsewhere: the
+            # pointer has to be grabbed instead (see ``set_pointer_grab``).
+            self._platform.set_click_through(self, not drawing)
+            if not drawing:
+                self.set_pointer_grab(False)
+
+    def set_pointer_grab(self, grab: bool) -> None:
+        """No compositor: routes all mouse input to this overlay. With several displays the
+        controller gives the grab to the overlay under the pointer."""
+        if self._composited or grab == self._grabbing:
+            return
+        self._grabbing = grab
+        if grab:
             self.grabMouse(Qt.CrossCursor)
         else:
             self.releaseMouse()
-            self._platform.set_click_through(self, True)
+
+    @property
+    def needs_pointer_grab(self) -> bool:
+        return self._drawing and not self._composited
 
     def close(self) -> bool:
-        if self._drawing and not self._composited:
-            self.releaseMouse()
+        self.set_pointer_grab(False)
         return super().close()
 
     def content_changed(self) -> None:

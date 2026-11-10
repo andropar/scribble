@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence
 
-from PySide6.QtCore import QMimeData, QPointF, QRectF, Qt, QUrl
+from PySide6.QtCore import QMimeData, QRectF, Qt, QUrl
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QImage, QPainter
 
 from . import paths, render

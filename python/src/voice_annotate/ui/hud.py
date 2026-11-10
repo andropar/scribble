@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QRectF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
     QCursor,
@@ -22,7 +22,6 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractButton,
-    QApplication,
     QHBoxLayout,
     QLabel,
     QToolButton,
@@ -360,6 +359,10 @@ class Hud(_Pill):
     def show_on(self, screen: Optional[QScreen], above: Optional[QWidget] = None) -> None:
         """Shows the HUD at the top of ``screen``, stacked above the overlay ``above``."""
         self._screen = screen
+        if self.windowHandle() is not None and not self._platform.window_alive(self):
+            # The system destroyed the native window behind Qt's back: start over.
+            self.destroy()
+            self._owner, self._excluded = None, False
         if above is not self._owner:
             # An owned window always stays above its owner, also after the overlay is clicked.
             # The owner can only change while the window is hidden.
@@ -378,6 +381,7 @@ class Hud(_Pill):
             self.hide()
             if self.windowHandle() is not None:
                 self.windowHandle().setTransientParent(None)
+                self._platform.clear_owner(self)
             self._owner = None
 
     # Dragging the pill by its background.

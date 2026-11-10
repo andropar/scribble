@@ -52,28 +52,52 @@ def input_device_name() -> Optional[str]:
         return None
 
 
+def _input_candidates(sd: Any) -> List[Any]:
+    """Devices to try: the default input, then the default input of each other host API
+    (on Windows the same microphone is reachable through MME, DirectSound and WASAPI, and
+    a device that fails with one often works with another)."""
+    candidates: List[Any] = [None]
+    try:
+        default_api = sd.default.hostapi
+        for index, api in enumerate(sd.query_hostapis()):
+            device = api.get("default_input_device", -1)
+            if index != default_api and isinstance(device, int) and device >= 0:
+                candidates.append(device)
+    except Exception as error:
+        log.debug("Could not list audio host APIs: %s", error)
+    return candidates
+
+
 def _open_sounddevice_stream(callback: Callable[..., None]) -> Any:
-    """Opens the default input, preferring 16 kHz mono and falling back to the device's
-    own format (which is then converted when recording stops)."""
+    """Opens an input stream, preferring 16 kHz mono and falling back to the device's own
+    format (which is then converted when recording stops)."""
     try:
         import sounddevice as sd
     except OSError as error:
         raise MicrophoneError(
-            "Audio backend not available ({}). On Linux install PortAudio: sudo apt install libportaudio2".format(
-                error
-            )
+            "Audio backend not available ({}). On Linux install PortAudio: "
+            "sudo apt install libportaudio2".format(error)
         )
-    last_error: Optional[Exception] = None
-    for kwargs in ({"samplerate": SAMPLE_RATE, "channels": 1}, {}):
-        try:
-            # "high" latency means large buffers: a recording does not need to be real time,
-            # and few callbacks keep Python out of the audio thread's way.
-            stream = sd.InputStream(dtype="float32", latency="high", callback=callback, **kwargs)
-            stream.start()
-            return stream
-        except Exception as error:  # sd.PortAudioError, ValueError for odd devices
-            last_error = error
-    raise MicrophoneError("No microphone input available ({})".format(last_error))
+    # "high" latency means large buffers: a recording does not need to be real time, and
+    # few callbacks keep Python out of the audio thread's way.
+    variants = (
+        {"samplerate": SAMPLE_RATE, "channels": 1, "latency": "high"},
+        {"latency": "high"},
+        {"samplerate": SAMPLE_RATE, "channels": 1},
+        {},
+    )
+    first_error: Optional[Exception] = None
+    for device in _input_candidates(sd):
+        for kwargs in variants:
+            try:
+                stream = sd.InputStream(device=device, dtype="float32", callback=callback, **kwargs)
+                stream.start()
+                if first_error is not None:
+                    log.info("Microphone opened with device %s and %s after: %s", device, kwargs, first_error)
+                return stream
+            except Exception as error:  # sd.PortAudioError, ValueError for odd devices
+                first_error = first_error or error
+    raise MicrophoneError("No microphone input available ({})".format(first_error))
 
 
 class AudioRecorder:

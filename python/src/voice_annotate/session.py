@@ -24,7 +24,7 @@ from .audio import AudioRecorder, AudioResult, input_device_name
 from .clipboard import RecentsStore
 from .core.models import Annotation, AnnotationTool, CaptureMode, ClickEvent
 from .platform import Platform
-from .processor import CaptureInput, RecentCapture, RecordingResult, ShotData
+from .processor import CaptureInput, RecentCapture, ShotData
 from .recorder import WalkthroughRecorder
 from .screens import Display, ScreenGrabber
 from .settings import AppSettings, HotkeyAction
@@ -499,6 +499,12 @@ class SessionController(QObject):
             for overlay in self.overlays.values():
                 if isinstance(overlay, WalkthroughOverlay):
                     overlay.set_drawing(drawing)
+        if drawing and not tracking:
+            # Without a compositor an overlay draws through a pointer grab, and only one
+            # window can hold it: the overlay of the display the pointer is on.
+            for index, overlay in self.overlays.items():
+                if isinstance(overlay, WalkthroughOverlay) and overlay.needs_pointer_grab:
+                    overlay.set_pointer_grab(display is not None and index == display.index)
 
         # Clicks on whatever the user is showing (not strokes on the overlay, not the HUD).
         if state is not None:

@@ -99,6 +99,14 @@ class Platform:
     def exclude_from_capture(self, widget: QWidget) -> bool:
         return False
 
+    def clear_owner(self, widget: QWidget) -> None:
+        """Cuts the native tie between a window and the window it floats above, so that
+        closing that one cannot take this one with it."""
+
+    def window_alive(self, widget: QWidget) -> bool:
+        """Whether the widget's native window still exists."""
+        return True
+
     def compositing(self) -> bool:
         """Whether translucent windows are composited (else they would be opaque black)."""
         return True
