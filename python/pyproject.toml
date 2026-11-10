@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "voice-annotate"
-version = "0.3.0"
+version = "0.4.0"
 description = "Talk and draw on your screen, paste the result into any coding agent (Windows and Linux app)."
 readme = "README.md"
 license = { text = "MIT" }

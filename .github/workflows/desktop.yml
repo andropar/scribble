@@ -2,7 +2,8 @@ name: Windows and Linux app
 
 on:
   push:
-    branches: [windows-linux-port]
+    branches: [master]
+    tags: ["v*"]
     paths: ["python/**", ".github/workflows/desktop.yml"]
   pull_request:
     paths: ["python/**", ".github/workflows/desktop.yml"]
@@ -154,9 +155,11 @@ jobs:
           if-no-files-found: ignore
 
   package:
-    name: Self-contained build · ${{ matrix.os }}
+    name: Download · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -226,12 +229,56 @@ jobs:
           # The icon travels inside the package.
           "$bin/python" -c "import os, voice_annotate; p = os.path.join(os.path.dirname(voice_annotate.__file__), 'resources', 'icon.png'); assert os.path.isfile(p), p"
 
+      - name: Try the installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = "dist\voice-annotate-windows-setup.exe"
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=autostart' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
+          $app = "$env:LOCALAPPDATA\Programs\voice-annotate"
+          & "$app\voice-annotate-cli.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "installed app does not run" }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\voice-annotate\voice-annotate.lnk")) { throw "no Start menu entry" }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          if ($run.'voice-annotate' -notlike "*voice-annotate.exe*") { throw "autostart entry missing" }
+          python packaging/smoke_test.py $app "$env:RUNNER_TEMP\speech.wav"
+          $u = Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
+          Start-Sleep 3
+          if (Test-Path "$app\voice-annotate.exe") { throw "uninstall left the app behind" }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          if ($run.'voice-annotate') { throw "uninstall left the autostart entry" }
+
+      - name: Try the installer (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          mkdir "$RUNNER_TEMP/unpacked" && tar -xzf dist/voice-annotate-linux-x86_64.tar.gz -C "$RUNNER_TEMP/unpacked"
+          "$RUNNER_TEMP/unpacked/voice-annotate/install.sh"
+          "$HOME/.local/bin/voice-annotate-cli" --version
+          grep -q "Exec=$HOME/.local/opt/voice-annotate/voice-annotate" "$HOME/.local/share/applications/voice-annotate.desktop"
+          test -f "$HOME/.local/share/icons/hicolor/256x256/apps/voice-annotate.png"
+          xvfb-run -a python packaging/smoke_test.py "$HOME/.local/opt/voice-annotate"
+          ls "$HOME/.local/opt/voice-annotate/_internal" | grep -i -E "portaudio|xcb-cursor" || echo "(portaudio and xcb-cursor are not bundled)"
+          "$HOME/.local/opt/voice-annotate/install.sh" --uninstall
+          test ! -e "$HOME/.local/opt/voice-annotate" && test ! -e "$HOME/.local/bin/voice-annotate"
+
       - name: Upload the build
         uses: actions/upload-artifact@v4
         with:
           name: voice-annotate-${{ runner.os }}
           path: |
-            python/dist/*.zip
-            python/dist/*.tar.gz
+            python/dist/voice-annotate-windows-setup.exe
+            python/dist/voice-annotate-windows-x64.zip
+            python/dist/voice-annotate-linux-x86_64.tar.gz
           if-no-files-found: error
           retention-days: 14
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          gh release upload "$GITHUB_REF_NAME" dist/voice-annotate-windows-setup.exe dist/voice-annotate-windows-x64.zip dist/voice-annotate-linux-x86_64.tar.gz --clobber

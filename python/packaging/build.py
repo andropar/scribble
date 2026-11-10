@@ -4,12 +4,14 @@
     python packaging/build.py
 
 Result: ``dist/voice-annotate/`` with ``voice-annotate`` (the app) and ``voice-annotate-cli``
-(triggers and developer commands), plus an archive of that folder next to it.
+(triggers and developer commands). Next to it, on Windows a zip and (with Inno Setup
+installed) ``voice-annotate-windows-setup.exe``; on Linux a tar.gz that carries ``install.sh``.
 """
 
 import os
 import platform
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -51,15 +53,25 @@ def main() -> int:
             str(work),
         ]
     )
-    system = {"win32": "windows", "linux": "linux"}.get(sys.platform, sys.platform)
-    name = "voice-annotate-{}-{}-{}".format(__version__, system, platform.machine().lower())
-    archive = shutil.make_archive(
-        str(dist / name),
-        "zip" if sys.platform == "win32" else "gztar",
-        root_dir=dist,
-        base_dir="voice-annotate",
-    )
-    sys.stdout.write("built {}\n".format(archive))
+    if sys.platform == "win32":
+        archive = shutil.make_archive(str(dist / "voice-annotate-windows-x64"), "zip", dist, "voice-annotate")
+        sys.stdout.write("built {}\n".format(archive))
+        compiler = shutil.which("ISCC") or r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+        if os.path.isfile(compiler):
+            subprocess.run(
+                [compiler, "/Q", "/DAppVersion=" + __version__, str(HERE / "installer.iss")], check=True
+            )
+            sys.stdout.write("built {}\n".format(dist / "voice-annotate-windows-setup.exe"))
+        else:
+            sys.stdout.write("Inno Setup not found: no installer, only the zip\n")
+    else:
+        # The archive installs itself: unpack and run ./install.sh
+        shutil.copy(HERE / "install-linux.sh", dist / "voice-annotate" / "install.sh")
+        name = "voice-annotate-{}-{}".format(
+            "linux" if sys.platform == "linux" else sys.platform, platform.machine().lower()
+        )
+        archive = shutil.make_archive(str(dist / name), "gztar", root_dir=dist, base_dir="voice-annotate")
+        sys.stdout.write("built {}\n".format(archive))
     return 0
 
 
