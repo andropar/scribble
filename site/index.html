@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>voice-annotate — Talk. Draw. Paste.</title>
-<meta name="description" content="Point at your screen while you talk. Your coding agent gets annotated screenshots and a transcript that cites every mark. Free, open source, runs on your machine. macOS, Windows, Linux.">
+<meta name="description" content="Screen capture for coding agents. Draw on your screen while you talk, then paste annotated screenshots and a transcript into Claude Code, Cursor or ChatGPT. Free and open source for macOS, Windows and Linux.">
 <meta property="og:title" content="voice-annotate — Talk. Draw. Paste.">
-<meta property="og:description" content="Point at your screen while you talk. Your coding agent gets annotated screenshots and a transcript that cites every mark.">
+<meta property="og:description" content="Screen capture for coding agents. Draw on your screen while you talk, then paste annotated screenshots and a transcript.">
 <meta property="og:image" content="https://jroth.space/voice-annotate/assets/og.png">
 <meta property="og:url" content="https://jroth.space/voice-annotate/">
 <link rel="canonical" href="https://jroth.space/voice-annotate/">
@@ -34,17 +34,17 @@
 
 <section class="hero">
   <div class="hero-copy">
-    <p class="eyebrow">For Claude Code, Cursor, ChatGPT and every other agent</p>
+    <p class="eyebrow">Works with Claude Code, Cursor, Codex and ChatGPT</p>
     <h1>Talk.<span class="red"> Draw.</span><span class="blue"> Paste.</span></h1>
-    <p class="lede">Explaining a UI problem in text takes longer than fixing it. Point at your screen while you talk, and your coding agent gets annotated screenshots plus a transcript that says exactly which mark you meant, and when.</p>
+    <p class="lede">Screen capture for coding agents. Draw on your screen while you talk, then paste. Your agent gets the annotated screenshots and a transcript that links each mark to what you were saying.</p>
     <div class="cta-row">
       <a class="button primary" id="cta" href="#download"><span id="cta-label">Download free</span><small id="cta-note">macOS · Windows · Linux</small></a>
-      <a class="button ghost" href="#film">Watch the 30-second film</a>
+      <a class="button ghost" href="#film">Watch the demo</a>
     </div>
     <ul class="ticks">
       <li>Runs on your machine</li>
-      <li>No account, no API key</li>
-      <li>Open source, MIT</li>
+      <li>No account or API key</li>
+      <li>Free and open source</li>
     </ul>
   </div>
 
@@ -66,7 +66,7 @@
         <i></i>
         <button id="replay" class="text" title="Play the demo again">Replay</button>
       </div>
-      <p class="your-turn" id="your-turn">Your turn. Draw on the screen.</p>
+      <p class="your-turn" id="your-turn">Try it: draw on the screenshot</p>
     </div>
     <div class="paste" aria-live="polite">
       <div class="paste-bar"><span>capture.md</span><span class="paste-hint">what your agent receives</span></div>
@@ -76,21 +76,21 @@
 </section>
 
 <section class="strip" id="how">
-  <h2><span data-mark="circle">“This thing here”</span> finally means something.</h2>
+  <h2>How it works</h2>
   <ol class="steps">
-    <li><span class="n">1</span><h3>Press the shortcut</h3><p>Your screen freezes, or keeps recording while you work. The microphone is on. No window to arrange, no dialog to click through.</p></li>
-    <li><span class="n">2</span><h3>Say it and point at it</h3><p>Circle the number that is wrong. Draw an arrow to where the button should go. Every mark gets a number, burned into the image.</p></li>
-    <li><span class="n">3</span><h3>Paste into your agent</h3><p>A few seconds later the clipboard holds the screenshots and a transcript with each mark cited at the word you were saying, with pixel coordinates.</p></li>
+    <li><span class="n">1</span><h3>Press the shortcut</h3><p>Snapshot freezes your screen. Walkthrough keeps recording while you work. The microphone turns on with both.</p></li>
+    <li><span class="n">2</span><h3>Draw and talk</h3><p>Circle the number that is wrong, or draw an arrow to where a button should go. Each mark gets a number on the screenshot.</p></li>
+    <li><span class="n">3</span><h3>Paste into your agent</h3><p>A few seconds later your clipboard has the screenshots and a transcript. Each mark is cited at the word you were saying, with its pixel coordinates.</p></li>
   </ol>
   <figure class="film" id="film">
     <video src="assets/demo.mp4" poster="assets/poster.png" controls preload="none" playsinline></video>
-    <figcaption>34 seconds, no sound needed.</figcaption>
+    <figcaption>34 seconds. Works without sound.</figcaption>
   </figure>
 </section>
 
 <section class="modes" id="modes">
   <div class="modes-head">
-    <h2>Three ways to <span data-mark="box" data-color="#0a84ff">show</span> what you mean</h2>
+    <h2>Three <span data-mark="box" data-color="#0a84ff">capture</span> modes</h2>
     <div class="os-switch" role="tablist" aria-label="Shortcuts for">
       <button role="tab" data-os="mac" class="on">macOS</button>
       <button role="tab" data-os="pc">Windows · Linux</button>
@@ -101,47 +101,47 @@
       <div class="mode-art"><svg viewBox="0 0 240 120" aria-hidden="true"><rect x="24" y="12" width="192" height="96" rx="8" fill="#fff" stroke="#ddd5c8"/><circle cx="36" cy="23" r="2.500" fill="#ddd5c8"/><circle cx="44" cy="23" r="2.500" fill="#ddd5c8"/><rect x="36" y="38" width="46" height="24" rx="4" fill="#ebe6dd"/><rect x="90" y="38" width="46" height="24" rx="4" fill="#ebe6dd"/><rect x="144" y="38" width="60" height="24" rx="4" fill="#ebe6dd"/><rect x="36" y="72" width="168" height="26" rx="4" fill="#f4f1ec"/><ellipse cx="59" cy="50" rx="30" ry="17" fill="none" stroke="#ff3b30" stroke-width="3"/><circle cx="31" cy="35" r="8" fill="#ff3b30" stroke="#fff" stroke-width="2"/><text x="31" y="38.500" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="sans-serif">1</text><path d="M150 88 180 58" stroke="#0a84ff" stroke-width="3" stroke-linecap="round"/><path d="m184 54-3 11-8-8z" fill="#0a84ff"/></svg></div>
       <kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd>
       <h3>Snapshot</h3>
-      <p>Freezes every display. Draw and talk over the frozen screen. Hide the overlay, navigate somewhere else, take the next shot, all in one capture.</p>
+      <p>Freeze every display and draw on it while you talk. You can hide the overlay, switch to another window and take the next shot in the same capture.</p>
     </article>
     <article>
       <div class="mode-art"><svg viewBox="0 0 240 120" aria-hidden="true"><g font-family="monospace" font-size="8" fill="#7d7468"><rect x="14" y="26" width="64" height="44" rx="5" fill="#fff" stroke="#ddd5c8"/><rect x="88" y="26" width="64" height="44" rx="5" fill="#fff" stroke="#ddd5c8"/><rect x="162" y="26" width="64" height="44" rx="5" fill="#fff" stroke="#ddd5c8"/><text x="14" y="84">00:04</text><text x="88" y="84">00:11</text><text x="162" y="84">00:19</text></g><rect x="22" y="34" width="26" height="6" rx="2" fill="#ebe6dd"/><rect x="96" y="34" width="38" height="6" rx="2" fill="#ebe6dd"/><rect x="170" y="34" width="20" height="6" rx="2" fill="#ebe6dd"/><path d="M26 58c8-10 14 6 22-4s12 2 18-4" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" opacity=".35"/><path d="M100 60c10-12 16 4 26-8" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" opacity=".7"/><ellipse cx="196" cy="54" rx="20" ry="10" fill="none" stroke="#0a84ff" stroke-width="3"/><path d="M14 98h212" stroke="#ddd5c8" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/><circle cx="46" cy="98" r="4" fill="#1f1c18"/><circle cx="120" cy="98" r="4" fill="#1f1c18"/><circle cx="194" cy="98" r="4" fill="#1f1c18"/></svg></div>
       <kbd data-mac="⌃⌥⌘R" data-pc="Ctrl+Alt+Shift+W">⌃⌥⌘R</kbd>
       <h3>Walkthrough</h3>
-      <p>Records while you keep working. Hold a modifier to draw laser-pointer marks that fade. Agents cannot watch video, so the recording becomes a storyboard of up to 30 keyframes.</p>
+      <p>Record while you keep working. Hold a modifier key to draw marks that fade like a laser pointer. Agents read images, not video, so the recording is turned into up to 30 keyframes.</p>
     </article>
     <article>
       <div class="mode-art"><svg viewBox="0 0 240 120" aria-hidden="true"><circle cx="30" cy="48" r="6" fill="#ff3b30"/><g stroke="#1f1c18" stroke-width="4" stroke-linecap="round"><path d="M52 42v12M62 34v28M72 40v16M82 26v44M92 36v24M102 44v8M112 30v36M122 38v20M132 22v52M142 36v24M152 42v12M162 32v32M172 40v16M182 44v8M192 36v24M202 42v12"/></g><g font-family="monospace" font-size="9" fill="#7d7468"><text x="24" y="100">“…rather say than type.”</text></g></svg></div>
       <kbd data-mac="⌃⌥⌘T" data-pc="Ctrl+Alt+Shift+T">⌃⌥⌘T</kbd>
       <h3>Dictation</h3>
-      <p>Voice only. The transcript lands on the clipboard as plain text, for the prompts you would rather say than type.</p>
+      <p>Voice only. Speak a prompt and paste it as plain text.</p>
     </article>
   </div>
   <ul class="facts">
-    <li><b>Arrow, box, circle, highlighter, pin</b> make numbered marks. The pen is for sketches and stays exactly as drawn.</li>
-    <li><b>Several displays</b> are captured together. In a walkthrough the cursor decides which one a keyframe comes from.</li>
-    <li><b>4K and larger</b> screens get an extra native-resolution crop around your marks, so small text stays readable.</li>
-    <li><b>Light on the chat.</b> By default the clipboard carries the transcript and a file. Agents that read files open the images when they need them.</li>
+    <li><b>Six tools.</b> Arrow, box, circle, highlighter and pin make numbered marks. The pen draws freehand.</li>
+    <li><b>Multiple displays.</b> All of them are captured. In a walkthrough, each keyframe comes from the display your cursor is on.</li>
+    <li><b>4K screens.</b> The capture adds a full-resolution crop around your marks, so small text stays readable.</li>
+    <li><b>Small pastes.</b> By default the clipboard holds the transcript and a file. Agents that read files open the images when they need them.</li>
   </ul>
 </section>
 
 <section class="private">
-  <h2><span data-mark="circle">Nothing</span> leaves your machine.</h2>
-  <p>Transcription runs locally with Whisper: on the Neural Engine on a Mac, on the CPU or an NVIDIA GPU elsewhere. Captures live in a folder in your home directory and are deleted after 14 days. There is no server, no telemetry, and nothing to sign up for.</p>
+  <h2>Your captures stay on <span data-mark="circle">your computer</span></h2>
+  <p>Speech is transcribed on your device with Whisper. It uses the Neural Engine on a Mac, and the CPU or an NVIDIA GPU on Windows and Linux. Captures are saved to a folder in your home directory and deleted after 14 days. voice-annotate has no server and collects no usage data.</p>
 </section>
 
 <section class="faq" id="faq">
   <h2>Questions</h2>
   <div class="faq-list">
-  <details><summary>Which agents does it work with?</summary><p>Anything you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
+  <details><summary>Which agents does it work with?</summary><p>Any agent you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
   <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac a one-minute recording takes about five seconds once the model has warmed up. On Windows and Linux it runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
   <details><summary>Does it understand languages other than English?</summary><p>Not yet. Transcription is set to English.</p></details>
-  <details><summary>What is different on Windows and Linux?</summary><p>Same three modes and the same output, in a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. The Wayland mode is reduced and new; details are in the <a href="https://github.com/andropar/voice-annotate#windows-and-linux">README</a>.</p></details>
+  <details><summary>What is different on Windows and Linux?</summary><p>The modes and the output are the same. The app is a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. On Wayland only Snapshot and Dictation work, and that mode is new. Details are in the <a href="https://github.com/andropar/voice-annotate#windows-and-linux">README</a>.</p></details>
   </div>
 </section>
 
 <section class="download" id="download">
   <h2>Download voice-annotate</h2>
-  <p class="price"><span data-mark="line" data-color="#ffcc00">Free.</span> No trial, no tiers. <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT licensed</a>.</p>
+  <p class="price"><span data-mark="line" data-color="#ffcc00">Free</span> and open source under the <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT license</a>.</p>
   <div class="dl-grid">
     <article data-os="mac">
       <h3>macOS</h3>
