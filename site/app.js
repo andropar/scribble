@@ -557,7 +557,14 @@
   var keys = document.querySelectorAll("kbd[data-mac]");
   function shortcuts(which) {
     keys.forEach(function (k) {
-      k.textContent = k.dataset[which];
+      var keys =
+        which === "pc" ? k.dataset.pc.split("+") : Array.from(k.dataset.mac);
+      k.textContent = "";
+      keys.forEach(function (key) {
+        var cap = document.createElement("span");
+        cap.textContent = key;
+        k.appendChild(cap);
+      });
     });
     document.querySelectorAll(".os-switch button").forEach(function (b) {
       b.classList.toggle("on", b.dataset.os === which);
@@ -568,7 +575,7 @@
       shortcuts(b.dataset.os);
     });
   });
-  if (os === "win" || os === "linux") shortcuts("pc");
+  shortcuts(os === "win" || os === "linux" ? "pc" : "mac");
 
   var copy = document.getElementById("copy");
   if (copy)
@@ -582,4 +589,98 @@
           }, 1600);
         });
     });
+})();
+
+// The page marks itself up the way the app does: numbered circles and boxes that draw
+// themselves when they scroll into view, and sections that rise in once.
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var PATHS = {
+    circle:
+      "M50 4 C 82 2, 99 22, 98 50 C 97 80, 74 97, 48 96 C 20 95, 2 78, 2 50 C 2 24, 22 6, 60 5",
+    box: "M2 6 L98 6 L98 94 L2 94 Z",
+    line: "M0 60 C 30 54, 65 66, 100 58",
+  };
+  var number = 0;
+  var sized = [];
+  // Paths are laid out in real pixels so the stroke keeps its width and the draw-in works.
+  function layout() {
+    sized.forEach(function (entry) {
+      var w = entry[0].clientWidth || entry[0].getBoundingClientRect().width;
+      var h = entry[0].clientHeight || entry[0].getBoundingClientRect().height;
+      if (!w || !h) return;
+      entry[0].setAttribute("viewBox", "0 0 " + w + " " + h);
+      entry[1].setAttribute(
+        "d",
+        PATHS[entry[2]].replace(/(-?[\d.]+) (-?[\d.]+)/g, function (_, x, y) {
+          return ((x * w) / 100).toFixed(1) + " " + ((y * h) / 100).toFixed(1);
+        }),
+      );
+    });
+  }
+  var marks = document.querySelectorAll("[data-mark]");
+  marks.forEach(function (el) {
+    var kind = el.dataset.mark,
+      color = el.dataset.color || "#ff3b30";
+    el.classList.add("mk", "mk-" + kind);
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "mk-ink");
+    svg.setAttribute("aria-hidden", "true");
+    var path = document.createElementNS(NS, "path");
+    path.setAttribute("pathLength", "1");
+    path.style.stroke = color;
+    svg.appendChild(path);
+    el.appendChild(svg);
+    sized.push([svg, path, kind]);
+    if (kind !== "line") {
+      var badge = document.createElement("span");
+      badge.className = "mk-n";
+      badge.setAttribute("aria-hidden", "true");
+      badge.textContent = ++number;
+      badge.style.background = color;
+      el.appendChild(badge);
+    }
+  });
+
+  layout();
+  window.addEventListener("resize", layout);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+
+  var rising = document.querySelectorAll(
+    ".strip h2, .steps li, .proof > *, .modes-head, .mode-grid article, .facts li, .private, .download h2, .dl-grid article, .faq details, .closing > *",
+  );
+  if (!("IntersectionObserver" in window)) {
+    marks.forEach(function (el) {
+      el.classList.add("in");
+    });
+    return;
+  }
+  var io = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        io.unobserve(el);
+        el.classList.add("in");
+        if (el.classList.contains("rv")) {
+          // Hand the element back to its own hover transitions afterwards.
+          setTimeout(function () {
+            el.classList.remove("rv", "in");
+            el.style.transitionDelay = "";
+          }, 1100);
+        }
+      });
+    },
+    { threshold: 0.2, rootMargin: "0px 0px -6% 0px" },
+  );
+  rising.forEach(function (el) {
+    var index = Array.prototype.indexOf.call(el.parentNode.children, el);
+    el.classList.add("rv");
+    el.style.transitionDelay = Math.min(index, 4) * 70 + "ms";
+    io.observe(el);
+  });
+  marks.forEach(function (el) {
+    io.observe(el);
+  });
 })();
