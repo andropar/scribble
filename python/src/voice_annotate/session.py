@@ -220,17 +220,21 @@ class SessionController(QObject):
             return
         # Our own pills must not be in the screenshot. Where the system cannot exclude
         # them from capture, hide them and give the screen a moment to repaint.
-        visible = [w for w in (self.hud, self.toast) if w is not None and w.isVisible()]
+        in_the_way = [
+            w
+            for w in (self.hud, self.toast)
+            if w is not None and w.isVisible() and not w.excluded_from_capture
+        ]
         self.toast.hide()
-        if visible and not self._hud_excluded():
-            if self.hud is not None:
-                self.hud.hide()
+        if in_the_way:
+            for widget in in_the_way:
+                widget.hide()
             QTimer.singleShot(120, lambda: self._grab_round(session))
         else:
             self._grab_round(session)
 
     def _hud_excluded(self) -> bool:
-        return bool(self.hud is not None and getattr(self.hud, "_excluded", False))
+        return self.hud is not None and self.hud.excluded_from_capture
 
     def _grab_round(self, session: CaptureSession) -> None:
         if self.session is not session or self._phase not in (Phase.SNAPSHOT, Phase.SNAPSHOT_NAVIGATING):

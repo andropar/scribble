@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtGui import QAction, QCursor, QDesktopServices
@@ -43,6 +43,9 @@ class TrayController(QObject):
 
         self.menu = QMenu()
         self.menu.aboutToShow.connect(self.rebuild)
+        #: Submenus of the current menu. They are referenced here because a submenu that is
+        #: only known to Qt can be deleted under the menu by some PySide versions.
+        self._submenus: List[QMenu] = []
         self.tray: Optional[QSystemTrayIcon] = None
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = QSystemTrayIcon(icons.tray_icon("idle"))
@@ -79,6 +82,12 @@ class TrayController(QObject):
         action.setEnabled(enabled)
         return action
 
+    def _submenu(self, parent: QMenu, title: str) -> QMenu:
+        submenu = QMenu(title, parent)
+        parent.addMenu(submenu)
+        self._submenus.append(submenu)
+        return submenu
+
     def _key(self, action: HotkeyAction) -> str:
         if action.value in self.hotkey_failures or not self.hotkeys_available:
             return ""
@@ -90,6 +99,9 @@ class TrayController(QObject):
     def rebuild(self) -> None:
         menu, controller = self.menu, self.controller
         menu.clear()
+        for submenu in self._submenus:
+            submenu.deleteLater()
+        self._submenus = []
         phase = controller.phase
 
         if phase.is_capturing:
@@ -113,14 +125,14 @@ class TrayController(QObject):
 
         menu.addSeparator()
         self.recents.prune_missing()
-        recent = menu.addMenu("Recent captures")
+        recent = self._submenu(menu, "Recent captures")
         if not self.recents.items:
             self._add(recent, "No captures yet", lambda: None, enabled=False)
         for capture in self.recents.items:
             title = "{} · {} · {}".format(
                 capture.mode.title, capture.date.astimezone().strftime("%b %d, %H:%M"), capture.summary
             )
-            sub = recent.addMenu(title)
+            sub = self._submenu(recent, title)
             for fmt in ClipboardFormat:
                 self._add(sub, "Copy: {}".format(fmt.title), lambda c=capture, f=fmt: self._copy(c, f))
             sub.addSeparator()

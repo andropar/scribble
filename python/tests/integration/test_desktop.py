@@ -479,7 +479,8 @@ def test_microphone_records_on_the_session_clock(env):
     if loopback:
         import wave
 
-        tone = (0.3 * np.sin(2 * np.pi * 440 * np.arange(48_000 * 4) / 48_000) * 32767).astype("<i2")
+        # Longer than the recording, so its end is still the tone.
+        tone = (0.3 * np.sin(2 * np.pi * 440 * np.arange(48_000 * 12) / 48_000) * 32767).astype("<i2")
         path = ARTIFACTS / "tone.wav"
         with wave.open(str(path), "wb") as f:
             f.setnchannels(1)

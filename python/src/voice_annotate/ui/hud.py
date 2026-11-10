@@ -63,6 +63,11 @@ class _Pill(QWidget):
         self.setWindowTitle("voice-annotate")
         self._excluded = False
 
+    @property
+    def excluded_from_capture(self) -> bool:
+        """Whether the system keeps this window out of screenshots and recordings."""
+        return self._excluded
+
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
