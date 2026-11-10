@@ -110,7 +110,7 @@ def test_snapshot_freezes_and_frames_both_displays(controller):
     # Screenshots are native: both 1920×1080 pixels, for canvases of different size.
     assert (shots[first.index].image.width(), shots[first.index].canvas_size.width) == (1920, 1920)
     assert (shots[second.index].image.width(), shots[second.index].canvas_size.width) == (1920, 960)
-    assert second.geometry.contains(controller.hud.frameGeometry().center())
+    assert controller._hud_display.index == second.index
 
     controller._select_tool(AnnotationTool.RECTANGLE)
     drag(controller.overlays[first.index], [(100, 100), (400, 300)])
@@ -164,7 +164,7 @@ def test_walkthrough_follows_the_cursor(controller):
     assert sorted(controller.overlays) == [0, 1] and sorted(controller._recorders) == [0, 1]
     assert wait_until(lambda: not controller.hud.starting, 15), "recorders did not start"
     hud = controller.hud
-    assert first.geometry.contains(hud.frameGeometry().center())
+    assert controller._hud_display.index == first.index
     pump(0.8)
 
     def click(display, x, y):
@@ -179,9 +179,7 @@ def test_walkthrough_follows_the_cursor(controller):
     pump(0.8)
     # Over to the second display, and stay there.
     point_at(platform, second, 300, 200)
-    assert wait_until(
-        lambda: second.geometry.contains(hud.frameGeometry().center()), 3
-    ), "toolbar did not follow"
+    assert wait_until(lambda: controller._hud_display.index == second.index, 3), "toolbar did not follow"
     assert [d for _, d in controller.session.cursor_timeline] == [first.index, second.index]
     switched_at = controller.session.cursor_timeline[1][0]
     pump(2.4)

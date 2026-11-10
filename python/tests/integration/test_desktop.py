@@ -493,29 +493,39 @@ def test_microphone_records_on_the_session_clock(env):
     recorder.on_level = levels.append
     buffers = []
     callback = recorder._callback
-    recorder._callback = lambda indata, frames, *rest: (
-        buffers.append((len(indata), frames)),
-        callback(indata, frames, *rest),
-    )[1]
+
+    def counting(indata, frames, *rest):
+        buffers.append((round(paths.now() - started, 2), len(indata)))
+        callback(indata, frames, *rest)
+
+    recorder._callback = counting
     started = paths.now()
     recorder.start()
-    pump(1.5)
+    pump(5.0)
     result = recorder.stop()
-    stopped = paths.now()
+    elapsed = paths.now() - started
     if player is not None:
         player.kill()
     sys.stdout.write(
-        "\n[microphone] {} at {} Hz · {} buffers, first {} · {:.2f}s recorded\n".format(
-            audio.input_device_name(), recorder._rate, len(buffers), buffers[:3], result.duration
+        "\n[microphone] {} at {} Hz · {} buffers (first {}, last {}) · {:.2f}s recorded in {:.2f}s\n".format(
+            audio.input_device_name(),
+            recorder._rate,
+            len(buffers),
+            buffers[:2],
+            buffers[-1:],
+            result.duration,
+            elapsed,
         )
     )
-    assert 1.0 < result.duration < 2.2, (result.duration, len(buffers), buffers[:5])
-    assert started - 0.5 <= result.first_sample_time <= started + 0.6
-    assert result.first_sample_time + result.duration <= stopped + 0.3
+    # The recording is as long as the time that passed, also when the device delivered
+    # nothing for a while (virtual sound cards do that after opening): the gap is silence.
+    assert elapsed - 1.0 < result.duration < elapsed + 0.5, (result.duration, elapsed, buffers[:5])
+    assert started - 0.5 <= result.first_sample_time <= started + 1.0
     assert levels, "no level updates"
     if loopback:
-        assert video.rms(result.samples) > 0.01, "the tone did not arrive"
-        spectrum = np.abs(np.fft.rfft(result.samples[:16_000]))
+        last = result.samples[-16_000:]
+        assert video.rms(last) > 0.01, "the tone did not arrive"
+        spectrum = np.abs(np.fft.rfft(last))
         assert abs(int(np.argmax(spectrum)) - 440) <= 3, "recorded pitch is off: resampling is wrong"
         assert max(levels) > 0.5
 

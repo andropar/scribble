@@ -43,7 +43,9 @@ def test_captures_across_two_displays_with_mixed_scaling(tmp_path):
     config.write_text(json.dumps(SCREENS), encoding="utf-8")
     env = dict(
         os.environ,
-        QT_QPA_PLATFORM="offscreen:configfile={}".format(config),
+        # A relative path: Qt splits the platform arguments at ":", which a Windows drive
+        # letter would run into.
+        QT_QPA_PLATFORM="offscreen:configfile={}".format(config.name),
         # The offscreen platform crashes while tearing down its emulated screens at exit.
         VOICE_ANNOTATE_EXIT_AFTER_TESTS="1",
     )
@@ -61,7 +63,7 @@ def test_captures_across_two_displays_with_mixed_scaling(tmp_path):
             "faulthandler_timeout=120",
             str(HERE / "multi_display_cases.py"),
         ],
-        cwd=str(HERE.parent),
+        cwd=str(tmp_path),
         env=env,
         capture_output=True,
         text=True,

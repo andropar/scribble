@@ -318,6 +318,45 @@ def test_silence_is_not_sent_to_whisper(tmp_path):
     assert transcriber.Status("ready", device="cpu", model="small.en").is_ready
 
 
+# MARK: output
+
+
+def test_piped_output_is_utf8_whatever_the_code_page(monkeypatch):
+    import io
+
+    from voice_annotate import app
+
+    raw_out, raw_err = io.BytesIO(), io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw_out, encoding="cp1252"))
+    monkeypatch.setattr(sys, "stderr", io.TextIOWrapper(raw_err, encoding="ascii"))
+    app.configure_output()
+    sys.stdout.write("processed in 2.1s → 1568×1018 · done…")
+    sys.stderr.write("näh")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    assert raw_out.getvalue().decode("utf-8") == "processed in 2.1s → 1568×1018 · done…"
+    assert raw_err.getvalue().decode("utf-8") == "näh"
+    # A windowed build has no streams at all: printing must still not raise.
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    app.configure_output()
+    sys.stdout.write("→")
+    sys.stderr.write("→")
+    sys.stdout.close()
+    sys.stderr.close()
+
+
+def test_command_line_rejects_what_it_does_not_know(capsys):
+    from voice_annotate import app
+
+    # Unknown arguments must never start the app (a frozen build is re-run with interpreter
+    # flags by helper processes).
+    assert app.main(["voice-annotate", "-B", "-S", "-c", "pass"]) == 2
+    assert app.main(["voice-annotate", "bogus"]) == 2
+    assert app.main(["voice-annotate", "--version"]) == 0
+    assert "voice-annotate " in capsys.readouterr().out
+
+
 # MARK: triggers
 
 

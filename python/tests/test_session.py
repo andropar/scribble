@@ -222,7 +222,8 @@ def test_walkthrough_flow(app):
     assert platform.click_through[overlay] is True
     assert not controller.session.clicks
     assert [a.number for a in controller.session.annotations] == [1]
-    pump(0.8)
+    # Well over the minimum spacing between keyframes, so the change gets its own frame.
+    pump(2.2)
 
     # A click on the app being shown is recorded with its canvas position.
     platform.x, platform.y = 320, 240

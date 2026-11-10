@@ -250,12 +250,26 @@ def run_app(argv: List[str]) -> int:
     return code
 
 
+def configure_output() -> None:
+    """Makes printing safe everywhere. A windowed build has no standard streams at all, and
+    a pipe on Windows uses a legacy code page that cannot encode what capture.md contains
+    (arrows, "×", "…"): piped output is UTF-8 instead, which is what its readers expect."""
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name)
+        if stream is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
+            continue
+        try:
+            if stream.isatty():
+                stream.reconfigure(errors="replace")
+            else:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main(argv: Optional[List[str]] = None) -> int:
-    # A windowed build (no console) has no standard streams at all.
-    if sys.stdout is None:
-        sys.stdout = open(os.devnull, "w", encoding="utf-8")
-    if sys.stderr is None:
-        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+    configure_output()
     argv = list(sys.argv if argv is None else argv)
     args = argv[1:]
     if args and args[0] in ("--version", "-V"):

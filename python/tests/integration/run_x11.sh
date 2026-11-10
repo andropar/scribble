@@ -3,9 +3,10 @@
 # COMPOSITOR=1, a compositing manager (translucent overlays need one to be see-through).
 #
 #   SCREEN    framebuffer, default 1920x1080x24
-#   MONITORS  split the framebuffer into monitors, e.g. "1920x1080+0+0 1920x1080+1920+0"
 #
-# Display scaling comes from Qt's own variables (QT_SCALE_FACTOR, QT_SCREEN_SCALE_FACTORS).
+# Display scaling comes from Qt's own variable: QT_SCALE_FACTOR=1.5 with SCREEN=2880x1620x24
+# is a 1920x1080 desktop at 150%. (Several monitors cannot be had this way: Xvfb accepts
+# `xrandr --setmonitor` and ignores it. tests/test_multi_display.py emulates them instead.)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -14,24 +15,6 @@ Xvfb :99 -screen 0 "${SCREEN:-1920x1080x24}" -nolisten tcp +extension Composite 
 xvfb=$!
 trap 'kill $xvfb 2>/dev/null || true' EXIT
 for _ in $(seq 1 50); do xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done
-
-if [ -n "${MONITORS:-}" ]; then
-  index=0
-  for monitor in $MONITORS; do
-    size="${monitor%%+*}"
-    position="${monitor#*+}"
-    width="${size%x*}"
-    height="${size#*x}"
-    # The first monitor replaces the one Xvfb reports for its single output ("screen").
-    output=none
-    [ "$index" = 0 ] && output=screen
-    geometry="${width}/$((width * 254 / 960))x${height}/$((height * 254 / 960))+${position%+*}+${position#*+}"
-    xrandr --setmonitor "MON$index" "$geometry" "$output" && echo "monitor MON$index $geometry $output"
-    index=$((index + 1))
-  done
-  xrandr --listmonitors
-  xrandr --listactivemonitors
-fi
 
 openbox &
 sleep 1

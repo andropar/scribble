@@ -34,7 +34,12 @@ def main() -> int:
     def run(*args, timeout=120, offscreen=False):
         environment = dict(env, QT_QPA_PLATFORM="offscreen") if offscreen else env
         result = subprocess.run(
-            [str(cli)] + list(args), capture_output=True, encoding="utf-8", timeout=timeout, env=environment
+            [str(cli)] + list(args),
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            env=environment,
         )
         sys.stdout.write(
             "$ voice-annotate-cli {}\n{}{}".format(" ".join(args), result.stdout, result.stderr[-1500:])

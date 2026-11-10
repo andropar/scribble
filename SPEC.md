@@ -259,6 +259,10 @@ Differences that follow from the platforms:
 - **Recording.** A thread per display grabs about ten frames a second; a frame identical to
   the previous one is skipped, the others are encoded with their capture time and sampled as
   thumbnails. Screen grabs do not contain the pointer, so it is drawn into the frames.
+- **Audio.** PortAudio delivers the microphone in blocks of a tenth of a second. What a
+  driver reports about timing is only used where it is plausible: buffer times are kept
+  inside the recording's lifetime, and gaps longer than five seconds are not filled with
+  silence. Sound cues are WAV files played by the system, not through PortAudio.
 - **The toolbar in recordings.** Windows hides it from capture (`WDA_EXCLUDEFROMCAPTURE`).
   X11 cannot, so it is visible in walkthrough keyframes and `capture.md` says what it is.
 - **No compositor (some X11 setups).** A translucent overlay would be opaque, so the

@@ -21,8 +21,10 @@ src/voice_annotate/
   platform/      what Qt does not cover: hotkeys, input state, click-through, focus, autostart
                  (windows.py: ctypes, x11.py: python-xlib)
   ui/            canvas, overlays, capture toolbar and toasts, tray, windows
+  sounds.py      start/stop/done cues, played by the system
   ipc.py         single instance and the command line triggers
   app.py, cli.py entry point and developer commands
+packaging/       PyInstaller spec, build script and a smoke test for the built app
 ```
 
 ## Run and test
@@ -52,6 +54,26 @@ tests/integration/run_x11.sh                # Linux: Xvfb + openbox (COMPOSITOR=
 The desktop tests move the pointer, press keys and open windows: run them in a VM or under
 Xvfb, not in the session you are working in. CI (`.github/workflows/desktop.yml`) runs all
 three suites on Windows and Ubuntu and uploads screenshots of what was on screen.
+
+Several displays: `tests/test_multi_display.py` runs the capture flows on two emulated
+displays, the second at 200% (Qt's offscreen platform can be given a screen layout).
+Display scaling on a real session: `SCREEN=2880x1620x24 QT_SCALE_FACTOR=1.5
+tests/integration/run_x11.sh` is a 1920×1080 desktop at 150%.
+
+## Self-contained build
+
+For people without Python: a folder with everything in it, made with PyInstaller.
+
+```bash
+pip install -e . pyinstaller
+python packaging/build.py                                  # → dist/voice-annotate/ and an archive
+python packaging/smoke_test.py dist/voice-annotate speech.wav
+```
+
+It has two launchers over the same files: `voice-annotate` (the app, no console window) and
+`voice-annotate-cli` (the triggers and developer commands, with output). The smoke test
+runs the commands, the whole Snapshot pipeline on a speech recording, and starts and quits
+the app. CI builds and tries it on Windows and Linux and keeps the archives as artifacts.
 
 ## Debugging
 

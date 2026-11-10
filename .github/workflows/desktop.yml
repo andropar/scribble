@@ -26,23 +26,8 @@ jobs:
         include:
           - { name: "Windows · Python 3.12", os: windows-latest, python: "3.12" }
           - { name: "Windows · Python 3.9", os: windows-2022, python: "3.9" }
-          - name: "Linux X11, two displays, no compositor · Python 3.12"
-            os: ubuntu-24.04
-            python: "3.12"
-            compositor: "0"
-            screen: 3840x1080x24
-            monitors: "1920x1080+0+0 1920x1080+1920+0"
-            expect_displays: "0,0,1920,1080@1;1920,0,1920,1080@1"
+          - { name: "Linux X11 · Python 3.12", os: ubuntu-24.04, python: "3.12", compositor: "0" }
           - { name: "Linux X11 with compositor · Python 3.9", os: ubuntu-22.04, python: "3.9", compositor: "1" }
-          - name: "Linux X11, two displays, second at 200% · Python 3.12"
-            os: ubuntu-24.04
-            python: "3.12"
-            compositor: "1"
-            desktop_only: true
-            screen: 3840x1080x24
-            monitors: "1920x1080+0+0 1920x1080+1920+0"
-            screen_scale_factors: "1;2"
-            expect_displays: "0,0,1920,1080@1;1920,0,1920,1080@2"
           - name: "Linux X11 at 150% · Python 3.12"
             os: ubuntu-24.04
             python: "3.12"
@@ -76,7 +61,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            xvfb x11-utils x11-xserver-utils openbox picom xclip espeak-ng \
+            xvfb x11-utils openbox picom xclip espeak-ng \
             libportaudio2 pulseaudio pulseaudio-utils libasound2-plugins \
             libegl1 libgl1 libfontconfig1 libdbus-1-3 fonts-dejavu-core \
             libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
@@ -134,14 +119,6 @@ jobs:
           pactl set-default-sink virtual
           pactl set-default-source virtual.monitor
           python -c "import sounddevice as sd; print(sd.query_devices())"
-          # Does capture work at all here, outside the app? (ALSA directly, then PortAudio.)
-          timeout 10 arecord -q -D default -f S16_LE -r 16000 -c 1 -d 2 "$RUNNER_TEMP/arecord.wav" || true
-          ls -l "$RUNNER_TEMP/arecord.wav" || true
-          python -c "
-          import time, sounddevice as sd
-          t = time.time(); a = sd.rec(32000, samplerate=16000, channels=1, blocking=True)
-          print('sounddevice blocking record: %d frames in %.2fs' % (len(a), time.time() - t))
-          "
 
       - name: Virtual sound card (Windows)
         if: ${{ !cancelled() && runner.os == 'Windows' }}
@@ -154,14 +131,11 @@ jobs:
         env:
           COMPOSITOR: ${{ matrix.compositor }}
           SCREEN: ${{ matrix.screen }}
-          MONITORS: ${{ matrix.monitors }}
           QT_SCALE_FACTOR: ${{ matrix.scale_factor }}
-          QT_SCREEN_SCALE_FACTORS: ${{ matrix.screen_scale_factors }}
-          VOICE_ANNOTATE_EXPECT_DISPLAYS: ${{ matrix.expect_displays }}
           VOICE_ANNOTATE_LOOPBACK: "1"
         run: |
           # An unset matrix value arrives as an empty variable; Qt must not see those.
-          for name in SCREEN MONITORS QT_SCALE_FACTOR QT_SCREEN_SCALE_FACTORS VOICE_ANNOTATE_EXPECT_DISPLAYS; do
+          for name in SCREEN QT_SCALE_FACTOR; do
             [ -n "${!name}" ] || unset "$name"
           done
           tests/integration/run_x11.sh -o faulthandler_timeout=240
