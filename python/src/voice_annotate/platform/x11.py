@@ -43,7 +43,7 @@ _NAMED_KEYS = {
 
 def keysym_name(key: str) -> str:
     """X keysym name for a hotkey key name."""
-    if len(key) == 1:
+    if len(key) == 1 and key.isascii():
         return key.lower()
     return _NAMED_KEYS.get(key, key)
 
@@ -285,7 +285,13 @@ class X11Platform(Platform):
         widget.activateWindow()
         widget.setFocus(Qt.OtherFocusReason)
         try:
-            self._window(widget).set_input_focus(self._X.RevertToParent, self._X.CurrentTime)
+            from Xlib import error as xerror
+
+            # Fails harmlessly (BadMatch) while the window is not mapped yet; Qt then sets
+            # the focus itself once it is.
+            self._window(widget).set_input_focus(
+                self._X.RevertToParent, self._X.CurrentTime, onerror=xerror.CatchError()
+            )
             self._display.sync()
         except Exception as error:
             log.debug("set_input_focus failed: %s", error)

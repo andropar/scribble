@@ -228,14 +228,14 @@ def test_global_hotkeys_fire_and_report_conflicts(env):
     wanted = {
         "snapshot": Hotkey(HYPER, "S"),
         "finish": Hotkey(HYPER, "F"),
-        "dictation": Hotkey(("ctrl", "alt"), "F9"),
+        "dictation": Hotkey(("ctrl", "shift"), "F9"),
     }
     try:
         assert backend.set_hotkeys(wanted) == {}
         env.inject.key("S", HYPER)
         assert wait_until(lambda: fired == ["snapshot"], 5), fired
         env.inject.key("F", HYPER)
-        env.inject.key("F9", ("ctrl", "alt"))
+        env.inject.key("F9", ("ctrl", "shift"))
         assert wait_until(lambda: fired == ["snapshot", "finish", "dictation"], 5), fired
         # The same key without the modifiers is not ours.
         env.inject.key("S", ("ctrl",))
@@ -397,7 +397,11 @@ def test_walkthrough_with_real_mouse_and_keyboard(env, target, controller):
     # The stroke is on the real screen (red pen, 4 px), so it is in what gets recorded.
     drawn = env.snap("walkthrough_stroke")
     stroke = controller.session.annotations[0]
-    sx, sy = stroke.points[len(stroke.points) // 2]
+    # Pen strokes are smoothed: the curve runs through the midpoints between the recorded
+    # points, not through the points themselves.
+    assert len(stroke.points) >= 4, stroke.points
+    (ax, ay), (bx, by) = stroke.points[1], stroke.points[2]
+    sx, sy = (ax + bx) / 2, (ay + by) / 2
     r, g, b = env.pixel(drawn, sx, sy)
     assert r > 180 and g < 120 and b < 120, "stroke is not visible on screen: {}".format((r, g, b))
 
@@ -557,10 +561,21 @@ def test_launch_at_login_round_trip(env, tmp_path, monkeypatch):
 
 
 def test_microphone_records_on_the_session_clock(env):
-    from voice_annotate import audio
+    import numpy as np
+
+    from voice_annotate import audio, video
 
     if audio.input_device_name() is None:
         pytest.skip("no input device in this session")
+    # CI routes the default output back into the default input, so a tone played here must
+    # come out of the recorder.
+    loopback = os.environ.get("VOICE_ANNOTATE_LOOPBACK") == "1"
+    if loopback:
+        import sounddevice as sd
+
+        t = np.arange(int(48_000 * 3)) / 48_000
+        sd.play((0.3 * np.sin(2 * np.pi * 440 * t)).astype(np.float32), 48_000)
+        pump(0.3)
     recorder = audio.AudioRecorder()
     levels = []
     recorder.on_level = levels.append
@@ -569,10 +584,17 @@ def test_microphone_records_on_the_session_clock(env):
     pump(1.5)
     result = recorder.stop()
     stopped = paths.now()
+    if loopback:
+        sd.stop()
     assert 1.0 < result.duration < 2.2, result.duration
     assert started - 0.5 <= result.first_sample_time <= started + 0.6
     assert result.first_sample_time + result.duration <= stopped + 0.3
     assert levels, "no level updates"
+    if loopback:
+        assert video.rms(result.samples) > 0.01, "the tone did not arrive"
+        spectrum = np.abs(np.fft.rfft(result.samples[:16_000]))
+        assert abs(int(np.argmax(spectrum)) - 440) <= 3, "recorded pitch is off: resampling is wrong"
+        assert max(levels) > 0.5
 
 
 # MARK: the real app, as a separate process
@@ -603,7 +625,8 @@ def test_real_app_end_to_end(env, target, tmp_path):
         if ARTIFACTS.is_dir()
         else None
     )
-    app_env = dict(os.environ, VOICE_ANNOTATE_HOME=str(home))
+    # The watchdog writes every thread's stack to the log if the app gets stuck.
+    app_env = dict(os.environ, VOICE_ANNOTATE_HOME=str(home), VOICE_ANNOTATE_WATCHDOG="45")
     app_env.pop("QT_QPA_PLATFORM", None)
     process = subprocess.Popen(
         [sys.executable, "-m", "voice_annotate"], env=app_env, stdout=log, stderr=subprocess.STDOUT

@@ -96,7 +96,7 @@ _NAMED_KEYS = {
 
 def virtual_key(name: str) -> Optional[int]:
     """Virtual-key code for a hotkey key name."""
-    if len(name) == 1 and (name.isalpha() or name.isdigit()):
+    if len(name) == 1 and name.isascii() and name.isalnum():
         return ord(name.upper())
     if name.startswith("F") and name[1:].isdigit() and 1 <= int(name[1:]) <= 24:
         return 0x70 + int(name[1:]) - 1

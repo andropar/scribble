@@ -70,14 +70,14 @@ jobs:
           python -m black --check src tests
 
       - name: Headless tests (core, pipeline, app state machine)
-        run: python -m pytest -q
+        run: python -m pytest -q -o faulthandler_timeout=300
 
       - name: Speech sample (Linux)
-        if: runner.os == 'Linux'
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: espeak-ng -v en-us -s 140 -w "$VOICE_ANNOTATE_SPEECH" "This button is broken. Please move the legend below the chart."
 
       - name: Speech sample (Windows)
-        if: runner.os == 'Windows'
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
         run: |
           Add-Type -AssemblyName System.Speech
@@ -87,36 +87,42 @@ jobs:
           $voice.Dispose()
 
       - name: Cache the Whisper test model
+        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/va-home/models
           key: whisper-tiny-en-v1
 
       - name: Transcription tests (real Whisper model)
+        if: ${{ !cancelled() }}
         env:
           VOICE_ANNOTATE_TEST_MODEL: "1"
-        run: python -m pytest -q -m model
+        run: python -m pytest -q -m model -o faulthandler_timeout=600
 
       - name: Virtual microphone (Linux)
-        if: runner.os == 'Linux'
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
         continue-on-error: true
         run: |
           printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > ~/.asoundrc
           pulseaudio --start --exit-idle-time=-1
+          pactl unload-module module-suspend-on-idle || true
           pactl load-module module-null-sink sink_name=virtual
           pactl set-default-sink virtual
           pactl set-default-source virtual.monitor
           python -c "import sounddevice as sd; print(sd.query_devices())"
 
       - name: Desktop tests (Linux, Xvfb)
-        if: runner.os == 'Linux'
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 15
         env:
           COMPOSITOR: ${{ matrix.compositor }}
-        run: tests/integration/run_x11.sh
+          VOICE_ANNOTATE_LOOPBACK: "1"
+        run: tests/integration/run_x11.sh -o faulthandler_timeout=240
 
       - name: Desktop tests (Windows)
-        if: runner.os == 'Windows'
-        run: python -m pytest --desktop tests/integration -v
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        timeout-minutes: 15
+        run: python -m pytest --desktop tests/integration -v -o faulthandler_timeout=240
 
       - name: Upload screenshots and logs
         if: always()

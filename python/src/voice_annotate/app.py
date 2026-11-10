@@ -66,6 +66,24 @@ def _check_linux_libraries() -> None:
             )
 
 
+def _enable_diagnostics() -> None:
+    """Crash and hang diagnostics on stderr: a traceback on fatal errors, all thread stacks
+    on SIGUSR1 (Unix), and every ``VOICE_ANNOTATE_WATCHDOG`` seconds if that is set."""
+    import faulthandler
+
+    if sys.stderr is None:
+        return
+    try:
+        faulthandler.enable()
+        if hasattr(signal, "SIGUSR1"):
+            faulthandler.register(signal.SIGUSR1, all_threads=True)
+        interval = float(os.environ.get("VOICE_ANNOTATE_WATCHDOG", "0") or 0)
+        if interval > 0:
+            faulthandler.dump_traceback_later(interval, repeat=True)
+    except (OSError, ValueError, RuntimeError):
+        pass
+
+
 def trigger(command: str) -> int:
     from . import ipc
 
@@ -89,6 +107,7 @@ def run_app(argv: List[str]) -> int:
     from .platform import prepare_environment
 
     setup_logging("--verbose" in argv)
+    _enable_diagnostics()
     prepare_environment()
     _check_linux_libraries()
 
@@ -221,6 +240,11 @@ def run_app(argv: List[str]) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    # A windowed build (no console) has no standard streams at all.
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
     argv = list(sys.argv if argv is None else argv)
     args = argv[1:]
     if args and args[0] in ("--version", "-V"):

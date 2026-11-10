@@ -121,7 +121,9 @@ def for_each_frame(path: PathLike, times: Sequence[float], body: Callable[[int, 
         return
     with av.open(str(path)) as container:
         stream = container.streams.video[0]
-        stream.thread_type = "AUTO"
+        # Slice threads only: frame threads hold frames back, which gains nothing for the
+        # few frames decoded per seek here.
+        stream.thread_type = "SLICE"
         time_base = stream.time_base
         start = stream.start_time or 0
         order = sorted(range(len(times)), key=lambda i: times[i])
@@ -129,37 +131,43 @@ def for_each_frame(path: PathLike, times: Sequence[float], body: Callable[[int, 
         decoder: Optional[Iterator] = None
         current = None  # last decoded frame with pts <= target
         pending = None  # first decoded frame beyond the previous target
-
-        for index in order:
-            target = start + int(max(times[index], 0) / time_base)
-            # Continue decoding forward when the target is close ahead; seek otherwise.
-            reuse = (
-                decoder is not None
-                and current is not None
-                and current.pts <= target
-                and (target - current.pts) * time_base <= 2.0
-            )
-            if not reuse:
-                container.seek(target, stream=stream, backward=True, any_frame=False)
-                decoder = container.decode(stream)
-                current, pending = None, None
-            if pending is not None and pending.pts <= target:
-                current, pending = pending, None
-            if pending is None:
-                for frame in decoder:
-                    if frame.pts is None:
-                        continue
-                    if frame.pts > target and current is not None:
-                        pending = frame
-                        break
-                    current = frame
-                    if frame.pts > target:
-                        break
-                else:
-                    decoder = None
-            if current is None:
-                raise RuntimeError("No video frame at {:.2f}s in {}".format(times[index], path))
-            body(index, current.to_ndarray(format="bgra"))
+        try:
+            for index in order:
+                target = start + int(max(times[index], 0) / time_base)
+                # Continue decoding forward when the target is close ahead; seek otherwise.
+                reuse = (
+                    decoder is not None
+                    and current is not None
+                    and current.pts <= target
+                    and (target - current.pts) * time_base <= 2.0
+                )
+                if not reuse:
+                    if decoder is not None:
+                        decoder.close()
+                    container.seek(target, stream=stream, backward=True, any_frame=False)
+                    decoder = container.decode(stream)
+                    current, pending = None, None
+                if pending is not None and pending.pts <= target:
+                    current, pending = pending, None
+                if pending is None and decoder is not None:
+                    for frame in decoder:
+                        if frame.pts is None:
+                            continue
+                        if frame.pts > target and current is not None:
+                            pending = frame
+                            break
+                        current = frame
+                        if frame.pts > target:
+                            break
+                    else:
+                        decoder = None
+                if current is None:
+                    raise RuntimeError("No video frame at {:.2f}s in {}".format(times[index], path))
+                body(index, current.to_ndarray(format="bgra"))
+        finally:
+            # The decode generator must be finished before the container closes under it.
+            if decoder is not None:
+                decoder.close()
 
 
 # MARK: audio

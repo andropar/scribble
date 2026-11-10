@@ -3,6 +3,7 @@ scripted transcript, real overlays, real pipeline, real clipboard object."""
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -363,3 +364,62 @@ def test_recent_capture_can_be_copied_in_every_format(app):
     assert image.width() == clipboard.COMPOSITE_WIDTH and image.height() > 600
     clipboard.write(capture, ClipboardFormat.MARKDOWN_FILE)
     assert files() == [capture.markdown_path] and board.mimeData().text() == md
+
+
+def test_recorder_and_pipeline_with_full_hd_frames(qapp, tmp_path):
+    """The recorder thread, the encoder and keyframe extraction at a real display size, with
+    the sparse timestamps a mostly static screen produces."""
+    import time
+
+    from voice_annotate import processor
+    from voice_annotate.core.geometry import Size
+    from voice_annotate.processor import CaptureInput, DisplayInfo
+    from voice_annotate.recorder import WalkthroughRecorder
+    from voice_annotate.screens import Display
+
+    screen = QGuiApplication.primaryScreen()
+    display = Display(0, "Full HD", screen, screen.geometry(), 1.0, (0, 0, 1920, 1080))
+    grabber = FakeGrabber()
+    t0 = paths.now()
+    recorder = WalkthroughRecorder(
+        grabber, display, tmp_path / "screen_display1.mp4", cursor=lambda: (400.0, 300.0)
+    )
+    recorder.start()
+    assert recorder.started.wait(10)
+    time.sleep(2.2)
+    grabber.level = 200  # one change, then static again
+    time.sleep(2.4)
+    result = recorder.stop()
+    duration = paths.now() - t0
+    assert result.video_path is not None and (result.pixel_size.width, result.pixel_size.height) == (
+        1920,
+        1080,
+    )
+    # Unchanged frames were skipped: far fewer samples than the ~46 grabs.
+    assert 2 <= len(result.samples) <= 6 and grabber.grabs > 20
+
+    inp = CaptureInput(
+        mode=CaptureMode.WALKTHROUGH,
+        folder=tmp_path,
+        start_date=datetime.now().astimezone(),
+        t0=t0,
+        duration=duration,
+        displays=[DisplayInfo(0, "Full HD", Size(1920, 1080))],
+        recordings={0: result},
+        cursor_timeline=[(0.0, 0)],
+    )
+    capture = processor.process(inp, Transcriber())
+    processor.wait_for_background()
+    events = json.loads((tmp_path / "events.json").read_text(encoding="utf-8"))
+    assert [f["reasons"] for f in events["frames"]] == [["start"], ["screen change"]]
+    from voice_annotate import render
+
+    first, second = (render.load_image(p) for p in capture.frame_paths)
+    assert (first.width(), first.height()) == (1568, 882)
+    assert (
+        abs(first.pixelColor(1000, 600).red() - 60) < 12
+        and abs(second.pixelColor(1000, 600).red() - 200) < 12
+    )
+    # The pointer was drawn into the frames (white arrow at 400,300 → 327,245 after scaling).
+    assert first.pixelColor(330, 252).red() > 200
+    assert (tmp_path / "recording.mp4").is_file()
