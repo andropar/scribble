@@ -592,7 +592,7 @@
 })();
 
 // The page marks itself up the way the app does: numbered circles and boxes that draw
-// themselves when they scroll into view, and sections that rise in once.
+// themselves when they scroll into view, nothing else moves.
 (function () {
   "use strict";
   var NS = "http://www.w3.org/2000/svg";
@@ -647,9 +647,6 @@
   window.addEventListener("resize", layout);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
 
-  var rising = document.querySelectorAll(
-    ".strip h2, .steps li, .strip .film, .modes-head, .mode-grid article, .facts li, .private, .download h2, .dl-grid article, .faq details",
-  );
   if (!("IntersectionObserver" in window)) {
     marks.forEach(function (el) {
       el.classList.add("in");
@@ -663,23 +660,10 @@
         var el = entry.target;
         io.unobserve(el);
         el.classList.add("in");
-        if (el.classList.contains("rv")) {
-          // Hand the element back to its own hover transitions afterwards.
-          setTimeout(function () {
-            el.classList.remove("rv", "in");
-            el.style.transitionDelay = "";
-          }, 1100);
-        }
       });
     },
     { threshold: 0.2, rootMargin: "0px 0px -6% 0px" },
   );
-  rising.forEach(function (el) {
-    var index = Array.prototype.indexOf.call(el.parentNode.children, el);
-    el.classList.add("rv");
-    el.style.transitionDelay = Math.min(index, 4) * 70 + "ms";
-    io.observe(el);
-  });
   marks.forEach(function (el) {
     io.observe(el);
   });
