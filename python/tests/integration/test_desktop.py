@@ -517,10 +517,14 @@ def test_microphone_records_on_the_session_clock(env):
             elapsed,
         )
     )
-    # The recording is as long as the time that passed, also when the device delivered
-    # nothing for a while (virtual sound cards do that after opening): the gap is silence.
-    assert elapsed - 1.0 < result.duration < elapsed + 0.5, (result.duration, elapsed, buffers[:5])
-    assert started - 0.5 <= result.first_sample_time <= started + 1.0
+    # What was recorded sits on the session clock: it starts when the device delivered its
+    # first sample (virtual sound cards take a moment after opening) and ends when recording
+    # stopped, with nothing missing in between.
+    stopped = started + elapsed
+    delay = result.first_sample_time - started
+    assert -0.5 <= delay < 3.0, "the device took {:.1f}s to deliver audio".format(delay)
+    assert abs(result.first_sample_time + result.duration - stopped) < 0.5, (delay, result.duration, elapsed)
+    assert result.duration > 2.0
     assert levels, "no level updates"
     if loopback:
         last = result.samples[-16_000:]

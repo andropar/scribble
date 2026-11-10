@@ -16,6 +16,7 @@ from voice_annotate.clipboard import RecentsStore
 from voice_annotate.core.models import AnnotationTool, CaptureMode
 from voice_annotate.session import HUD_LEGEND_NOTE, Phase, SessionController
 from voice_annotate.settings import AppSettings, ClipboardFormat, DrawModifier, HotkeyAction
+from voice_annotate.transcriber import Status
 from voice_annotate.ui.overlay import SnapshotOverlay, WalkthroughOverlay
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -24,12 +25,9 @@ from helpers import FakeTranscriber  # noqa: E402
 
 
 class Transcriber(FakeTranscriber):
-    """FakeTranscriber with the status interface the controller subscribes to."""
+    """FakeTranscriber with the status interface the controller and the tray use."""
 
-    class _Status:
-        is_ready, title = True, "ready"
-
-    status = _Status()
+    status = Status("ready", device="cpu", model="small.en")
 
     def subscribe(self, listener):
         pass
@@ -424,3 +422,70 @@ def test_recorder_and_pipeline_with_full_hd_frames(qapp, tmp_path):
     # The pointer was drawn into the frames (white arrow at 400,300 → 327,245 after scaling).
     assert first.pixelColor(330, 252).red() > 200
     assert (tmp_path / "recording.mp4").is_file()
+
+
+def test_tray_menu_follows_the_app_state(app):
+    from voice_annotate.ui.tray import TrayController
+
+    controller = app
+    opened = []
+    tray = TrayController(
+        controller, controller.recents, controller.settings, controller.transcriber, controller.platform
+    )
+    tray.on_show_settings = lambda: opened.append("settings")
+
+    def titles(menu):
+        return [a.text() for a in menu.actions() if not a.isSeparator()]
+
+    def action(menu, start):
+        return next(a for a in menu.actions() if a.text().startswith(start))
+
+    tray.rebuild()
+    idle = titles(tray.menu)
+    assert idle[:3] == [
+        "Snapshot\tCtrl+Alt+Shift+S",
+        "Walkthrough\tCtrl+Alt+Shift+W",
+        "Dictation\tCtrl+Alt+Shift+T",
+    ]
+    assert "Recent captures" in idle and "Settings…" in idle and "Quit voice-annotate" in idle
+    assert titles(action(tray.menu, "Recent captures").menu()) == ["No captures yet"]
+
+    # A shortcut that could not be registered is flagged, and not advertised.
+    tray.hotkey_failures = {"snapshot": "Ctrl+Alt+Shift+S is already used by another program"}
+    tray.rebuild()
+    assert titles(tray.menu)[0] == "Snapshot"
+    warning = action(tray.menu, "⚠ Shortcut unavailable")
+    assert "already used" in warning.text()
+    warning.trigger()
+    assert opened == ["settings"]
+    tray.hotkey_failures = {}
+
+    # Starting from the menu; while capturing it offers finish and cancel instead.
+    action(tray.menu, "Snapshot").trigger()
+    assert controller.phase == Phase.SNAPSHOT
+    tray.rebuild()
+    assert titles(tray.menu)[:2] == ["Finish capture\tCtrl+Alt+Shift+F", "Cancel capture"]
+    controller.overlays[0].tool = AnnotationTool.PIN
+    controller.overlays[0].begin_stroke((50, 60))
+    action(tray.menu, "Finish capture").trigger()
+    assert wait_until(lambda: bool(controller.finished), 20)
+
+    # The capture is listed, and can be copied again in any format from its submenu.
+    tray.rebuild()
+    recent = action(tray.menu, "Recent captures").menu()
+    entry = recent.actions()[0]
+    assert entry.text().startswith("Snapshot · ") and "1 frame · 1 annotation" in entry.text()
+    formats = titles(entry.menu())
+    assert formats[:6] == ["Copy: {}".format(f.title) for f in ClipboardFormat]
+    assert formats[-2:] == ["Open capture.md", "Show in file manager"]
+    QGuiApplication.clipboard().clear()
+    action(entry.menu(), "Copy: Text with image paths").trigger()
+    assert QGuiApplication.clipboard().text().startswith("# Screen capture · Snapshot")
+    assert (
+        controller.toast.text == "Copied to clipboard" and controller.toast.detail == "Text with image paths"
+    )
+
+    # Without global hotkeys the menu does not show any.
+    tray.hotkeys_available = False
+    tray.rebuild()
+    assert titles(tray.menu)[:3] == ["Snapshot", "Walkthrough", "Dictation"]

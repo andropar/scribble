@@ -155,9 +155,12 @@ On Linux, two system libraries have to be there first (Debian/Ubuntu names):
 sudo apt install libportaudio2 libxcb-cursor0
 ```
 
-Then start it with `voice-annotate`. It puts an icon in the system tray; *Settings* has
-*Launch at login*. On the first start it downloads a Whisper model to
+Then start it with `voice-annotate` (on Windows, `voice-annotate-gui` starts it without a
+console window). It puts an icon in the system tray; *Settings* has *Launch at login*. On the first start it downloads a Whisper model to
 `~/.voice-annotate/models` (Small English, ~480 MB, when it runs on the CPU).
+
+For a machine without Python, `python/packaging/build.py` makes a self-contained folder
+with PyInstaller (see [python/README.md](python/README.md)).
 
 ### Use
 
@@ -195,9 +198,10 @@ keyboard settings if you prefer, or have to (see Wayland below).
 ### Status
 
 The automated tests drive the real app with synthetic mouse and keyboard input on Windows
-Server and on Ubuntu under Xvfb (with and without a compositor), and run a real Whisper
-model. Not covered by them, so less certain: several displays, display scaling other than
-100%, the Wayland mode, and transcription on a GPU.
+Server 2022 and 2025 and on Ubuntu under Xvfb (with and without a compositor, and at 150%
+display scaling), and run a real Whisper model. Several displays are tested on an emulated
+layout only. Not covered at all, so less certain: display scaling on Windows, the Wayland
+mode, and transcription on a GPU.
 
 ## Build
 

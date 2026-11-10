@@ -214,6 +214,18 @@ jobs:
         if: runner.os == 'Windows'
         run: python packaging/smoke_test.py dist/voice-annotate "$RUNNER_TEMP/speech.wav"
 
+      - name: Install from a wheel, as users do
+        run: |
+          python -m pip wheel . --no-deps -w "$RUNNER_TEMP/wheel"
+          python -m venv "$RUNNER_TEMP/venv"
+          if [ "$RUNNER_OS" = "Windows" ]; then bin="$RUNNER_TEMP/venv/Scripts"; else bin="$RUNNER_TEMP/venv/bin"; fi
+          (cd "$RUNNER_TEMP/wheel" && "$bin/python" -m pip install voice_annotate-*.whl)
+          "$bin/voice-annotate" --version
+          ls "$bin" | grep voice-annotate-gui
+          QT_QPA_PLATFORM=offscreen "$bin/voice-annotate" --render-demo "$RUNNER_TEMP/demo.png"
+          # The icon travels inside the package.
+          "$bin/python" -c "import os, voice_annotate; p = os.path.join(os.path.dirname(voice_annotate.__file__), 'resources', 'icon.png'); assert os.path.isfile(p), p"
+
       - name: Upload the build
         uses: actions/upload-artifact@v4
         with:
