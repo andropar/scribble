@@ -14,15 +14,9 @@ const tip = (m: Mark, p: number): Pt => {
 };
 
 const REST: Pt = { x: 760, y: 560 };
-const ENTER: Pt = { x: 1190, y: 250 };
 
 /** Cursor position: follows the stroke while drawing, glides to the next mark before it. */
 export const cursorAt = (t: number): Pt => {
-  // Before the shortcut (a lead-in, see Steps) the pointer drifts to its resting place.
-  if (t < 0) {
-    const e = Easing.inOut(Easing.cubic)(clamp01((t + 1.5) / 1.1));
-    return { x: ENTER.x + (REST.x - ENTER.x) * e, y: ENTER.y + (REST.y - ENTER.y) * e };
-  }
   let from = REST;
   for (const m of marks) {
     const move = 0.65;

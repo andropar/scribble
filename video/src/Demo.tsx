@@ -1,7 +1,7 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame } from "remotion";
 import { Stage, fadeIn } from "./Stage";
 import { theme } from "./theme";
-import { FPS, NARRATION_LENGTH, NARRATION_START, marks, phrases, sec, words } from "./timeline";
+import { FPS, NARRATION_LENGTH, NARRATION_START, marks, phrases, words } from "./timeline";
 
 export const DEMO_SECONDS = NARRATION_START + NARRATION_LENGTH + 0.7;
 
@@ -98,16 +98,15 @@ const Captions: React.FC<{ t: number }> = ({ t }) => {
   );
 };
 
-/** `lead` seconds of the live screen come first, before the shortcut is pressed. */
-export const Demo: React.FC<{ lead?: number }> = ({ lead = 0 }) => {
-  const frame = useCurrentFrame() - sec(lead);
+export const Demo: React.FC = () => {
+  const frame = useCurrentFrame();
   const t = frame / FPS;
   const keysOut = interpolate(t, [0.55, 0.8], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const flash = interpolate(t, [0.5, 0.58, 0.85], [0, 0.85, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   // HUD and captions leave before the screen slides aside in the Output scene.
   const tail = interpolate(t, [DEMO_SECONDS - 0.5, DEMO_SECONDS - 0.1], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
-    <AbsoluteFill style={{ background: theme.paper, opacity: lead ? 1 : fadeIn(frame, 0, 8) }}>
+    <AbsoluteFill style={{ background: theme.paper, opacity: fadeIn(frame, 0, 8) }}>
       <div style={{ position: "absolute", left: STAGE.left, top: STAGE.top }}>
         <Stage t={t} width={STAGE.width} />
         <div style={{ opacity: tail }}>
