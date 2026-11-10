@@ -21,7 +21,7 @@ export const Hook: React.FC = () => {
       {out > 0 && (
         <div style={{ opacity: out, transform: `translateY(${(1 - out) * -30}px)`, width: 1240 }}>
           <div style={{ fontSize: 30, fontWeight: 600, color: theme.muted, marginBottom: 22 }}>Describing a UI bug to your coding agent:</div>
-          <div style={{ background: "white", borderRadius: 22, border: `1.5px solid ${theme.line}`, boxShadow: "0 20px 60px rgba(40,30,20,.12)", padding: "30px 36px", minHeight: 250, fontSize: 36, lineHeight: 1.45, color: theme.ink }}>
+          <div style={{ background: "white", borderRadius: 22, border: `1.5px solid ${theme.line}`, boxShadow: "0 20px 60px rgba(0,0,0,.08)", padding: "30px 36px", minHeight: 250, fontSize: 36, lineHeight: 1.45, color: theme.ink }}>
             {typed}
             <span style={{ display: "inline-block", width: 3, height: 40, marginLeft: 2, verticalAlign: -6, background: theme.ink, opacity: Math.floor(t * 4) % 2 }} />
           </div>
