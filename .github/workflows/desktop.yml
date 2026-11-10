@@ -281,4 +281,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
-          gh release upload "$GITHUB_REF_NAME" dist/voice-annotate-windows-setup.exe dist/voice-annotate-windows-x64.zip dist/voice-annotate-linux-x86_64.tar.gz --clobber
+          # Each system builds its own files; the patterns drop the ones that are not here.
+          files=(dist/voice-annotate-windows-setup.ex[e] dist/voice-annotate-windows-x64.zi[p] dist/voice-annotate-linux-x86_64.tar.g[z])
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
