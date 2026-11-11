@@ -10,7 +10,7 @@
 </p>
 
 <p align="center"><sub>Scribble was called voice-annotate up to version 0.4. Updating keeps your
-settings, captures and models: <code>~/.scribble</code> becomes <code>~/.scribble</code>.</sub></p>
+settings, captures and models: <code>~/.voice-annotate</code> becomes <code>~/.scribble</code>.</sub></p>
 
 <p align="center">
   <a href="https://github.com/andropar/scribble/releases/latest/download/scribble-macos.zip"><b>Download for macOS</b></a> ·
