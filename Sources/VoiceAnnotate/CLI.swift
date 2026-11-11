@@ -8,6 +8,11 @@ enum CLI {
     voice-annotate developer commands:
       --transcribe <audio-file> [model]      Transcribe a file, print language and word timings
       --render-demo <out.png>                Render every annotation type onto a test image
+      --eval-live [flags] <audio-file>...    Compare transcribing while recording with one pass, word by word
+                                             --deterministic      no random retries: the two must match exactly
+                                             --twice              compare two one-pass runs instead (run-to-run variation)
+                                             --first-token-check  with WhisperKit's first-token check, which the app turns off
+                                             --realtime           feed the audio to LiveTranscriber at 8x speed, as a microphone would
       --demo-snapshot <audio-file> [screenshot.png annotations.json]
                                              Full Snapshot pipeline on a synthetic (or given @2x) screenshot
       --test-walkthrough <seconds> [screen|all]  Record display(s) (index into NSScreen.screens), run the pipeline
@@ -62,6 +67,8 @@ enum CLI {
                 switch args[0] {
                 case "--transcribe" where args.count >= 2:
                     try await transcribe(path: args[1], model: args.count >= 3 ? args[2] : model)
+                case "--eval-live" where args.count >= 2:
+                    try await evalLive(Array(args.dropFirst()))
                 case "--render-demo" where args.count >= 2:
                     try renderDemo(to: URL(fileURLWithPath: args[1]))
                 case "--demo-snapshot" where args.count >= 2:
@@ -148,6 +155,112 @@ enum CLI {
         }
         for w in result.words {
             out(String(format: "%6.2f–%6.2f %@", w.start, w.end, w.text))
+        }
+    }
+
+    /// For each file: the one-pass transcript, then the transcript `LiveTranscriber` gives for
+    /// the same audio (cut as it would be while recording, each piece decoded on its own),
+    /// and the words that differ.
+    @MainActor
+    private static func evalLive(_ arguments: [String]) async throws {
+        let flags = Set(arguments.filter { $0.hasPrefix("--") })
+        let paths = arguments.filter { !$0.hasPrefix("--") }
+        guard !paths.isEmpty, flags.isSubset(of: ["--deterministic", "--twice", "--first-token-check", "--realtime"]) else { failUsage() }
+        Transcriber.decodingTweak = { options in
+            if flags.contains("--deterministic") { options.temperatureFallbackCount = 0 }
+            if flags.contains("--first-token-check") { options.firstTokenLogProbThreshold = -1.5 }
+        }
+        try await loadModel(model)
+        let rate = AudioResult.sampleRate
+        var totalWords = 0, totalMissing = 0, totalExtra = 0, different = 0
+        var longestWait = 0.0
+        for path in paths {
+            let samples = try AudioRecorder.loadSamples(from: URL(fileURLWithPath: path))
+            var started = Date()
+            let whole = try await Transcriber.shared.transcribe(samples, model: model, language: language, vocabulary: vocabulary)
+            let onePass = Date().timeIntervalSince(started)
+
+            let other: TranscriptionOutput
+            var cuts: [Int] = []
+            var wait = 0.0
+            if flags.contains("--twice") {
+                started = Date()
+                other = try await Transcriber.shared.transcribe(samples, model: model, language: language, vocabulary: vocabulary)
+                wait = Date().timeIntervalSince(started)
+            } else if flags.contains("--realtime") {
+                // The class the app uses, with audio arriving over time. At 8x speed decoding
+                // falls behind, so finishing also has to catch up, as on a slow machine.
+                let source = ReplaySource(samples, speed: 8)
+                let live = LiveTranscriber(recorder: source, model: model, language: language, vocabulary: vocabulary)
+                try? await Task.sleep(nanoseconds: UInt64(Double(samples.count) / rate / 8 * 1e9))
+                started = Date()
+                let finished = await live.finish(samples: samples)
+                wait = Date().timeIntervalSince(started)
+                if let finished {
+                    other = finished
+                } else {
+                    // Nothing was cut (a recording under 30 s) or a piece failed: one pass, as in the app.
+                    other = try await Transcriber.shared.transcribe(samples, model: model, language: language, vocabulary: vocabulary)
+                    wait = Date().timeIntervalSince(started)
+                }
+            } else {
+                (other, cuts, wait) = try await LiveTranscriber.replay(samples, model: model, language: language, vocabulary: vocabulary)
+            }
+
+            let reference = whole.words.map(\.text), candidate = other.words.map(\.text)
+            let ops = WordDiff.compare(reference: reference, candidate: candidate)
+            var missing = 0, extra = 0
+            var lines: [String] = []
+            var k = 0
+            while k < ops.count {
+                if case .same = ops[k] { k += 1; continue }
+                // One line for each run of neighbouring differences, with three words around it.
+                let first = k
+                var time = 0.0
+                while k < ops.count {
+                    if case let .missing(i) = ops[k] { missing += 1; if k == first { time = whole.words[i].start } }
+                    else if case let .extra(j) = ops[k] { extra += 1; if k == first { time = other.words[j].start } }
+                    else { break }
+                    k += 1
+                }
+                let context = ops[max(0, first - 3)..<min(ops.count, k + 3)].map { op -> String in
+                    switch op {
+                    case let .same(i, _): return reference[i].trimmingCharacters(in: .whitespaces)
+                    case let .missing(i): return "[-" + reference[i].trimmingCharacters(in: .whitespaces) + "]"
+                    case let .extra(j): return "[+" + candidate[j].trimmingCharacters(in: .whitespaces) + "]"
+                    }
+                }.joined(separator: " ")
+                lines.append(String(format: "    %.1fs  …%@…", time, context))
+            }
+            // Word times must agree too: they place the mark references.
+            var shift = 0.0
+            for case let .same(i, j) in ops {
+                shift = max(shift, abs(whole.words[i].start - other.words[j].start))
+            }
+            let name = (path as NSString).lastPathComponent == "audio.m4a" ? ((path as NSString).deletingLastPathComponent as NSString).lastPathComponent : (path as NSString).lastPathComponent
+            out(String(format: "%@  %.0fs, %d pieces: %d words, %d missing, %d extra, largest time difference %.2fs", name, Double(samples.count) / rate, cuts.count + 1, reference.count, missing, extra, shift))
+            out(String(format: "    wait after finishing %.1fs instead of %.1fs", wait, onePass))
+            lines.forEach(out)
+            totalWords += reference.count; totalMissing += missing; totalExtra += extra
+            if missing + extra > 0 { different += 1 }
+            longestWait = max(longestWait, wait)
+        }
+        out(String(format: "TOTAL %d recordings, %d words: %d missing, %d extra, %d recordings differ, longest wait %.1fs", paths.count, totalWords, totalMissing, totalExtra, different, longestWait))
+    }
+
+    /// Hands out a file's samples as time passes, as the microphone would.
+    private final class ReplaySource: LiveSampleSource, @unchecked Sendable {
+        private let all: [Float]
+        private let speed: Double
+        private let started = Date()
+        init(_ samples: [Float], speed: Double) {
+            all = samples
+            self.speed = speed
+        }
+        var sampleCount: Int { min(all.count, Int(Date().timeIntervalSince(started) * speed * AudioResult.sampleRate)) }
+        func samples(from start: Int, count: Int) -> [Float] {
+            let end = min(sampleCount, start + count)
+            return start < end ? Array(all[start..<end]) : []
         }
     }
 

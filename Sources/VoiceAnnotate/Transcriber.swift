@@ -155,11 +155,28 @@ final class Transcriber: ObservableObject {
         return url
     }
 
+    /// Silence (or no microphone) is not transcribed: Whisper would make something up.
+    nonisolated static func hasSpeech(_ samples: [Float]) -> Bool {
+        samples.count > Int(AudioResult.sampleRate / 2) && AudioRecorder.rms(samples) > 0.0015
+    }
+
+    /// Transcribes a whole recording.
     func transcribe(_ samples: [Float], model: String, language: TranscriptionLanguage, vocabulary: String) async throws -> TranscriptionOutput {
-        // Silence (or no mic): skip, Whisper would hallucinate.
-        guard samples.count > Int(AudioResult.sampleRate / 2), AudioRecorder.rms(samples) > 0.0015 else {
+        guard Self.hasSpeech(samples) else {
             return TranscriptionOutput(words: [], segments: [])
         }
+        let started = Date()
+        let decoded = try await decode(samples, model: model, language: language, vocabulary: vocabulary)
+        let duration = Double(samples.count) / AudioResult.sampleRate
+        var output = Self.convert(decoded.results, duration: duration)
+        output.warning = decoded.warning
+        Log.transcribe.info("Transcribed \(String(format: "%.1f", duration), privacy: .public)s audio in \(String(format: "%.2f", Date().timeIntervalSince(started)), privacy: .public)s, \(output.words.count) words")
+        return output
+    }
+
+    /// WhisperKit's results for `samples`, with times relative to their start. `transcribe`
+    /// uses this for a whole recording, `LiveTranscriber` for one piece of it.
+    func decode(_ samples: [Float], model: String, language: TranscriptionLanguage, vocabulary: String) async throws -> (results: [TranscriptionResult], warning: String?) {
         let kit = try await ensureLoaded(model).value
         let plan = LanguagePlan.resolve(selection: language, isMultilingual: kit.textDecoder.isModelMultilingual)
         var options = DecodingOptions(
@@ -174,24 +191,34 @@ final class Transcriber: ObservableObject {
             wordTimestamps: true,
             chunkingStrategy: .vad
         )
+        // The first-token check abandons a 30 s chunk when its first word looks unlikely (a
+        // quiet or hesitant start) and retries it with random sampling. About half the time
+        // the retries end with the chunk dropped as silence, so whole sentences went missing
+        // from some captures and not from others. Without the check they are kept; the
+        // no-speech, repetition and confidence checks still apply.
+        options.firstTokenLogProbThreshold = nil
         // Each retry detects the language again at a higher temperature, where it can flip:
-        // clear Russian came back as Ukrainian at 0.2 and 0.4. So detection gets one attempt,
-        // and the first-token check, which only abandons a window for a retry, goes with it.
+        // clear Russian came back as Ukrainian at 0.2 and 0.4. So detection gets one attempt.
         if plan.language == nil {
             options.temperatureFallbackCount = 0
-            options.firstTokenLogProbThreshold = nil
         }
         let vocab = vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
         if !vocab.isEmpty, let tokenizer = kit.tokenizer {
             options.promptTokens = tokenizer.encode(text: " " + vocab).filter { $0 < tokenizer.specialTokens.specialTokenBegin }
         }
-        let started = Date()
+        if let tune = Self.decodingTweak { tune(&options) }
         let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
-        let duration = Double(samples.count) / AudioResult.sampleRate
-        var output = Self.convert(results, duration: duration)
-        output.warning = plan.warning
-        Log.transcribe.info("Transcribed \(String(format: "%.1f", duration), privacy: .public)s audio in \(String(format: "%.2f", Date().timeIntervalSince(started)), privacy: .public)s, \(output.words.count) words")
-        return output
+        return (results, plan.warning)
+    }
+
+    /// Dev commands only: changes the decoding options of every following call.
+    nonisolated(unsafe) static var decodingTweak: ((inout DecodingOptions) -> Void)?
+
+    /// The pieces WhisperKit cuts long audio into before decoding each on its own: at most
+    /// 30 s, ending in the longest silence of their second half.
+    func chunker(model: String) async throws -> (chunker: VADAudioChunker, window: Int) {
+        let kit = try await ensureLoaded(model).value
+        return (VADAudioChunker(vad: kit.voiceActivityDetector ?? EnergyVAD()), kit.featureExtractor.windowSamples ?? Constants.defaultWindowSamples)
     }
 
     /// Skips anything starting after `duration`: the last window is padded to 30 s, and

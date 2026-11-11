@@ -14,7 +14,7 @@ struct AudioResult {
 }
 
 /// Records the default input device into a 16 kHz mono buffer (WhisperKit's input format).
-final class AudioRecorder: @unchecked Sendable {
+final class AudioRecorder: LiveSampleSource, @unchecked Sendable {
     private let engine = AVAudioEngine()
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: AudioResult.sampleRate, channels: 1, interleaved: false)!
     private var converter: AVAudioConverter?
@@ -23,6 +23,17 @@ final class AudioRecorder: @unchecked Sendable {
     private var firstHostTime: Double?
     private var running = false
     private var configObserver: NSObjectProtocol?
+
+    /// Samples recorded so far.
+    var sampleCount: Int { lock.withLock { samples.count } }
+
+    /// Copy of up to `count` samples starting at `start`, while recording continues.
+    func samples(from start: Int, count: Int) -> [Float] {
+        lock.withLock {
+            let end = min(samples.count, start + count)
+            return start < end ? Array(samples[start..<end]) : []
+        }
+    }
 
     /// Called on the main queue with the current RMS level (0…1, roughly perceptual).
     var onLevel: (@MainActor (Float) -> Void)?

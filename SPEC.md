@@ -183,12 +183,37 @@ assembled into a signed `.app` by `scripts/build-app.sh`.
   + live thumbnails), `AudioRecorder` (AVAudioEngine → 16 kHz mono + m4a), overlay
   (`NSPanel` + custom `NSView`, shared `AnnotationRenderer` for on-screen and offline
   rendering), HUD (SwiftUI in `NSPanel`), `Transcriber` (WhisperKit, preloaded at launch,
-  model in `~/.voice-annotate/models`), `BundleWriter`, `ClipboardWriter`, settings window,
+  model in `~/.voice-annotate/models`), `LiveTranscriber` (decodes WhisperKit's ≤30 s
+  pieces while recording, see below), `BundleWriter`, `ClipboardWriter`, settings window,
   onboarding/permissions window, launch-at-login (`SMAppService`).
 
 Clock: everything is in host time (`mach_absolute_time` seconds — same base as
 `CACurrentMediaTime`, SCStream PTS, `AVAudioTime.hostTime`, `NSEvent.timestamp`) minus
 session start.
+
+### Transcribing while recording
+
+WhisperKit transcribes audio longer than 30 s by cutting it into pieces (`VADAudioChunker`:
+each piece ends in the middle of the longest silence in the second half of the 30 s after its
+start) and decoding the pieces independently. A cut therefore depends only on audio that has
+already been recorded once 30 s have passed since the previous cut. `LiveTranscriber` polls
+the recorder, makes these cuts with the same chunker, decodes each piece with the options of
+the one-pass path and shifts its times by the piece's offset. When the capture ends it
+decodes what is left (nothing if under a second remains, as the chunker does) and converts
+all results together. If nothing was cut (a capture under 30 s) or a piece fails, the whole
+recording is transcribed in one pass instead.
+
+The result equals the one-pass transcript. With temperature retries switched off the two
+were identical word for word and time for time on 19 real captures of 17 s to 8.5 min
+(`--eval-live --deterministic`, and with `--realtime` for the class itself, fed at 8× speed).
+With retries on, Whisper is not deterministic, and the two differ no more than two one-pass
+runs do.
+
+WhisperKit's first-token check (`firstTokenLogProbThreshold`) is off. It abandons a piece
+whose first token is unlikely, such as a quiet or hesitant start, and retries with sampling.
+On real captures a piece that tripped it came back empty in about half the runs: up to 30 s
+of speech missing in one run and present in the next. Noise and silence still give no text
+without it; the no-speech, compression-ratio and average-log-probability checks remain.
 
 ## 8. Permissions
 

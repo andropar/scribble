@@ -93,6 +93,12 @@ Some of the design decisions:
   focus without activating the app. The model is preloaded at launch. Auto compute starts on
   a GPU build (about 0.25× real time) while the Neural Engine build (about 0.08×) compiles
   in the background.
+- **Transcribed while you talk.** WhisperKit cuts long audio into pieces of at most 30 s and
+  decodes each on its own. Where a piece ends depends only on the 30 s after its start, so
+  the app makes the same cuts during the recording and decodes every piece as soon as it is
+  complete. Finishing only has to decode the last piece: about a second, however long the
+  capture was. The transcript is the one a single pass over the whole recording gives
+  (`--eval-live` compares the two word by word).
 - **Testable core.** Shape classification, keyframe selection, transcript interleaving,
   markdown composition and coordinate mapping live in `VoiceAnnotateCore`, a pure Swift
   module with unit tests. The app target holds only the AppKit, ScreenCaptureKit and
@@ -128,7 +134,8 @@ Or build it yourself (see [Build](#build)).
   language.
 - **Faster after a while.** For about 10 minutes after the first start, macOS compiles the
   model for the Neural Engine in the background. Until then transcription runs on the GPU,
-  roughly 3× slower (a 1-minute recording takes ~15 s instead of ~5 s).
+  roughly 3× slower. Either way most of a recording is transcribed while you are still
+  talking, so the wait after finishing stays at a second or two.
 - **After updating** to a new release (or rebuilding with ad-hoc signing, or replacing the app
   with a differently signed build), macOS may keep showing Screen Recording as enabled while
   the app still can't record: the grant belongs to the old build, and switching it off and on
@@ -251,7 +258,8 @@ like a new app to macOS: see *After updating* above for re-granting Screen Recor
 
 The binary also has developer commands, e.g. `.build/debug/VoiceAnnotate --help`:
 `--transcribe <audio>`, `--render-demo <out.png>`, `--demo-snapshot <audio> [screenshot annotations]`,
-`--test-screenshot [screen]`, `--test-walkthrough <seconds> [screen|all]`. They use the app's
+`--test-screenshot [screen]`, `--test-walkthrough <seconds> [screen|all]`,
+`--eval-live <audio>...`. They use the app's
 settings; `--language <code|auto>`, `--model <variant>` and `--vocabulary <text>` override
 them for one run.
 `docs/demo/render.sh` regenerates the README images with the real pipeline.

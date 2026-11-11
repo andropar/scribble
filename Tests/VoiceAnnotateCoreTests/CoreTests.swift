@@ -572,3 +572,20 @@ final class TranscriptTextTests: XCTestCase {
         XCTAssertEqual(TranscriptText.joined([]), "")
     }
 }
+
+final class WordDiffTests: XCTestCase {
+    func testIgnoresCaseAndPunctuation() {
+        let ops = WordDiff.compare(reference: ["Okay.", " Quick", "review"], candidate: ["okay", "quick,", " Review!"])
+        XCTAssertEqual(ops, [.same(0, 0), .same(1, 1), .same(2, 2)])
+    }
+
+    func testFindsMissingAndExtraWords() {
+        let ops = WordDiff.compare(reference: ["a", "b", "c", "d"], candidate: ["a", "c", "x", "d"])
+        XCTAssertEqual(ops, [.same(0, 0), .missing(1), .same(2, 1), .extra(2), .same(3, 3)])
+    }
+
+    func testEmptySides() {
+        XCTAssertEqual(WordDiff.compare(reference: [], candidate: ["a"]), [.extra(0)])
+        XCTAssertEqual(WordDiff.compare(reference: ["a"], candidate: []), [.missing(0)])
+    }
+}
