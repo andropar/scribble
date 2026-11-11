@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/images/icon.png" width="96" alt="voice-annotate icon"></p>
+<p align="center"><img src="docs/images/icon.png" width="96" alt="Scribble icon"></p>
 
-<h1 align="center">voice-annotate</h1>
+<h1 align="center">Scribble</h1>
 
 <p align="center">
   <b>Talk and draw on your screen, paste the result into any coding agent.</b><br>
@@ -8,6 +8,9 @@
   screenshots and a transcript that says exactly which mark you meant, and when. On-device,
   no API keys.
 </p>
+
+<p align="center"><sub>Scribble used to be called voice-annotate. Until the next release the app, its
+command, its <code>~/.voice-annotate</code> folder and the download files keep that name.</sub></p>
 
 <p align="center">
   <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip"><b>Download for macOS</b></a> ·
@@ -22,7 +25,7 @@
 
 Explaining a UI problem to an agent in text takes longer than fixing it, and a bare
 screenshot loses the pointing: *this* number, *that* legend, move *this* button *there*.
-voice-annotate records what you say while you draw. Every mark is numbered and burned into
+Scribble records what you say while you draw. Every mark is numbered and burned into
 the image. The transcript then cites the mark at the word you were saying when you drew it,
 with its location in image pixels:
 
