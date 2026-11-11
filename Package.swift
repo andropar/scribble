@@ -2,31 +2,31 @@
 import PackageDescription
 
 let package = Package(
-    name: "VoiceAnnotate",
+    name: "Scribble",
     platforms: [.macOS(.v15)],
     products: [
-        .executable(name: "VoiceAnnotate", targets: ["VoiceAnnotate"]),
+        .executable(name: "Scribble", targets: ["Scribble"]),
     ],
     dependencies: [
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.1.1"),
     ],
     targets: [
         .target(
-            name: "VoiceAnnotateCore",
+            name: "ScribbleCore",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
-            name: "VoiceAnnotate",
+            name: "Scribble",
             dependencies: [
-                "VoiceAnnotateCore",
+                "ScribbleCore",
                 .product(name: "WhisperKit", package: "WhisperKit"),
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "VoiceAnnotateCoreTests",
+            name: "ScribbleCoreTests",
             dependencies: [
-                "VoiceAnnotateCore",
+                "ScribbleCore",
                 .product(name: "WhisperKit", package: "WhisperKit"),
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]

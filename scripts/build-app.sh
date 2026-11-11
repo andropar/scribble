@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Builds, bundles and signs voice-annotate.app into ./build.
+# Builds, bundles and signs Scribble.app into ./build.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG="${CONFIG:-release}"
-APP="build/voice-annotate.app"
+APP="build/Scribble.app"
 
-swift build -c "$CONFIG" --product VoiceAnnotate
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/VoiceAnnotate"
+swift build -c "$CONFIG" --product Scribble
+BIN="$(swift build -c "$CONFIG" --show-bin-path)/Scribble"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/VoiceAnnotate"
+cp "$BIN" "$APP/Contents/MacOS/Scribble"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 ICONSET="build/AppIcon.iconset"
@@ -29,7 +29,7 @@ if [ -z "$IDENTITY" ]; then
   IDENTITY="-"
 fi
 codesign --force --options runtime --timestamp=none \
-  --entitlements Resources/VoiceAnnotate.entitlements \
+  --entitlements Resources/Scribble.entitlements \
   --sign "$IDENTITY" "$APP"
 codesign --verify --strict "$APP"
 echo "Built $APP (signed with: $IDENTITY)"

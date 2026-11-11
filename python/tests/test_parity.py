@@ -4,10 +4,10 @@ demo capture). Fed the same timeline, this port must produce the same capture.md
 import json
 from datetime import timedelta, timezone
 
-from voice_annotate.core import describer, markdown
-from voice_annotate.core.geometry import CoordinateMapper, Size
-from voice_annotate.core.markdown import CaptureDocument, FrameRef, Marker
-from voice_annotate.core.models import Annotation, CaptureMode, Word
+from scribble.core import describer, markdown
+from scribble.core.geometry import CoordinateMapper, Size
+from scribble.core.markdown import CaptureDocument, FrameRef, Marker
+from scribble.core.models import Annotation, CaptureMode, Word
 
 CET = timezone(timedelta(hours=1))
 

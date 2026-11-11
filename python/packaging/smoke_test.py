@@ -1,6 +1,6 @@
 """Checks a built app folder the way a user would use it.
 
-    python packaging/smoke_test.py dist/voice-annotate [speech.wav]
+    python packaging/smoke_test.py dist/scribble [speech.wav]
 
 Runs the console launcher's commands (version, rendering, and with a speech recording the
 whole Snapshot pipeline including a Whisper model download), then starts the windowed app,
@@ -20,16 +20,16 @@ def main() -> int:
     folder = Path(sys.argv[1]).resolve()
     speech = sys.argv[2] if len(sys.argv) > 2 else None
     suffix = ".exe" if sys.platform == "win32" else ""
-    cli, app = folder / ("voice-annotate-cli" + suffix), folder / ("voice-annotate" + suffix)
+    cli, app = folder / ("scribble-cli" + suffix), folder / ("scribble" + suffix)
     assert cli.is_file() and app.is_file(), "launchers missing in {}".format(folder)
 
-    work = Path(tempfile.mkdtemp(prefix="voice-annotate-smoke-"))
+    work = Path(tempfile.mkdtemp(prefix="scribble-smoke-"))
     home = work / "home"
     home.mkdir()
     (home / "settings.json").write_text(
         json.dumps({"model": "tiny.en", "onboardingShown": True}), encoding="utf-8"
     )
-    env = dict(os.environ, VOICE_ANNOTATE_HOME=str(home), PYTHONIOENCODING="utf-8")
+    env = dict(os.environ, SCRIBBLE_HOME=str(home), PYTHONIOENCODING="utf-8")
 
     def run(*args, timeout=120, offscreen=False):
         environment = dict(env, QT_QPA_PLATFORM="offscreen") if offscreen else env
@@ -42,12 +42,12 @@ def main() -> int:
             env=environment,
         )
         sys.stdout.write(
-            "$ voice-annotate-cli {}\n{}{}".format(" ".join(args), result.stdout, result.stderr[-1500:])
+            "$ scribble-cli {}\n{}{}".format(" ".join(args), result.stdout, result.stderr[-1500:])
         )
         return result
 
     version = run("--version")
-    assert version.returncode == 0 and version.stdout.startswith("voice-annotate "), version.stdout
+    assert version.returncode == 0 and version.stdout.startswith("scribble "), version.stdout
 
     picture = work / "demo.png"
     rendered = run("--render-demo", str(picture), offscreen=True)
@@ -80,7 +80,7 @@ def main() -> int:
     finally:
         if process.poll() is None:
             process.kill()
-    log = home / "voice-annotate.log"
+    log = home / "scribble.log"
     if log.is_file():
         sys.stdout.write("--- app log ---\n" + log.read_text(encoding="utf-8", errors="replace")[-3000:])
     sys.stdout.write("\nsmoke test passed\n")

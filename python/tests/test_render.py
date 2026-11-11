@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from PySide6.QtGui import QColor, QImage, QPainter
 
-from voice_annotate import render
-from voice_annotate.core.geometry import Rect, Size
-from voice_annotate.core.models import BLUE, RED, WHITE, YELLOW, Annotation, AnnotationTool
+from scribble import render
+from scribble.core.geometry import Rect, Size
+from scribble.core.models import BLUE, RED, WHITE, YELLOW, Annotation, AnnotationTool
 
 
 def white(w, h):

@@ -1,8 +1,8 @@
 """Real transcription with a real Whisper model (tiny.en, ~75 MB download).
 
-Opt in with ``VOICE_ANNOTATE_TEST_MODEL=1`` and point ``VOICE_ANNOTATE_SPEECH`` at a
+Opt in with ``SCRIBBLE_TEST_MODEL=1`` and point ``SCRIBBLE_SPEECH`` at a
 recording of: "This button is broken. Please move the legend below the chart."
-``VOICE_ANNOTATE_TEST_HOME`` (optional) is a home folder whose ``models`` are reused.
+``SCRIBBLE_TEST_HOME`` (optional) is a home folder whose ``models`` are reused.
 """
 
 import json
@@ -16,13 +16,13 @@ from pathlib import Path
 
 import pytest
 
-from voice_annotate import processor, video
-from voice_annotate.audio import AudioResult
-from voice_annotate.core.geometry import Size
-from voice_annotate.core.models import RED, Annotation, AnnotationTool, CaptureMode
-from voice_annotate.processor import CaptureInput, DisplayInfo, ShotData
-from voice_annotate.settings import WhisperCompute, WhisperModel
-from voice_annotate.transcriber import Transcriber
+from scribble import processor, video
+from scribble.audio import AudioResult
+from scribble.core.geometry import Size
+from scribble.core.models import RED, Annotation, AnnotationTool, CaptureMode
+from scribble.processor import CaptureInput, DisplayInfo, ShotData
+from scribble.settings import WhisperCompute, WhisperModel
+from scribble.transcriber import Transcriber
 
 sys.path.insert(0, str(Path(__file__).parent))
 from helpers import gradient_image  # noqa: E402
@@ -33,18 +33,16 @@ KEYWORDS = ("button", "broken", "move", "legend", "chart")
 
 
 def home() -> Path:
-    path = Path(
-        os.environ.get("VOICE_ANNOTATE_TEST_HOME") or tempfile.mkdtemp(prefix="voice-annotate-model-")
-    )
+    path = Path(os.environ.get("SCRIBBLE_TEST_HOME") or tempfile.mkdtemp(prefix="scribble-model-"))
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 @pytest.fixture(scope="module")
 def speech():
-    path = os.environ.get("VOICE_ANNOTATE_SPEECH")
+    path = os.environ.get("SCRIBBLE_SPEECH")
     if not path or not os.path.isfile(path):
-        pytest.skip("VOICE_ANNOTATE_SPEECH is not set")
+        pytest.skip("SCRIBBLE_SPEECH is not set")
     return video.load_samples(path)
 
 
@@ -60,7 +58,7 @@ def spoken(words) -> list:
 def test_transcribes_speech_with_word_timings(speech, whisper):
     statuses = []
     whisper.subscribe(lambda s: statuses.append(s.kind))
-    out = whisper.transcribe(speech, WhisperModel.TINY_EN, WhisperCompute.AUTO, "voice-annotate")
+    out = whisper.transcribe(speech, WhisperModel.TINY_EN, WhisperCompute.AUTO, "scribble")
     assert whisper.status.is_ready and whisper.status.model == "tiny.en"
     assert "loading" in statuses and statuses[-1] == "ready"
     found = [k for k in KEYWORDS if k in spoken(out.words)]
@@ -117,14 +115,12 @@ def test_marks_land_on_the_spoken_word(qapp, speech, whisper, tmp_path):
 
 
 def test_command_line_pipeline(speech, tmp_path):
-    """``voice-annotate --demo-snapshot``: model download/load, pipeline and files, as a user runs it."""
+    """``scribble --demo-snapshot``: model download/load, pipeline and files, as a user runs it."""
     base = home()
     (base / "settings.json").write_text(json.dumps({"model": "tiny.en"}), encoding="utf-8")
-    env = dict(
-        os.environ, VOICE_ANNOTATE_HOME=str(base), QT_QPA_PLATFORM="offscreen", PYTHONIOENCODING="utf-8"
-    )
+    env = dict(os.environ, SCRIBBLE_HOME=str(base), QT_QPA_PLATFORM="offscreen", PYTHONIOENCODING="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "voice_annotate", "--demo-snapshot", os.environ["VOICE_ANNOTATE_SPEECH"]],
+        [sys.executable, "-m", "scribble", "--demo-snapshot", os.environ["SCRIBBLE_SPEECH"]],
         capture_output=True,
         encoding="utf-8",
         timeout=600,

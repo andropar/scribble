@@ -1,6 +1,6 @@
 # Screen capture · Snapshot · 0:19 · 2026-11-05 10:23
 
-The user took a screenshot and talked while drawing on it (voice-annotate).
+The user took a screenshot and talked while drawing on it (Scribble).
 Marks in the images are the user's own: numbered ones (#1, #2, …) point at something, unnumbered pen strokes are freehand drawing. Each is referenced in the transcript at the moment it was drawn. Coordinates are pixels in the referenced image, origin top-left.
 
 Screenshots:

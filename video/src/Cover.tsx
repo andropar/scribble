@@ -13,7 +13,7 @@ export const Cover: React.FC = () => (
     <div style={{ width: 640, flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
         <Img src={staticFile("icon.png")} style={{ width: 96, height: 96 }} />
-        <div style={{ fontSize: 68, fontWeight: 780, letterSpacing: -2.5, color: theme.ink }}>voice-annotate</div>
+        <div style={{ fontSize: 68, fontWeight: 780, letterSpacing: -2.5, color: theme.ink }}>Scribble</div>
       </div>
       <div style={{ marginTop: 34, fontSize: 64, fontWeight: 740, letterSpacing: -2, lineHeight: 1.08, color: theme.ink }}>
         Talk. <span style={{ color: theme.red }}>Draw.</span> <span style={{ color: theme.blue }}>Paste.</span>

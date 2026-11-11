@@ -3,14 +3,15 @@
 app:
 	./scripts/build-app.sh
 
+# voice-annotate.app is the app's name before 0.5.
 install: app
-	rm -rf ~/Applications/voice-annotate.app
+	rm -rf ~/Applications/Scribble.app ~/Applications/voice-annotate.app
 	mkdir -p ~/Applications
-	cp -R build/voice-annotate.app ~/Applications/
-	@echo "Installed to ~/Applications/voice-annotate.app"
+	cp -R build/Scribble.app ~/Applications/
+	@echo "Installed to ~/Applications/Scribble.app"
 
 run: install
-	open ~/Applications/voice-annotate.app
+	open ~/Applications/Scribble.app
 
 test:
 	swift test
@@ -20,15 +21,15 @@ test:
 VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
 release:
 	SIGN_IDENTITY=- ./scripts/build-app.sh
-	rm -f build/voice-annotate-$(VERSION).zip
-	ditto -c -k --keepParent build/voice-annotate.app build/voice-annotate-$(VERSION).zip
-	shasum -a 256 build/voice-annotate-$(VERSION).zip
+	rm -f build/scribble-macos.zip
+	ditto -c -k --keepParent build/Scribble.app build/scribble-macos.zip
+	shasum -a 256 build/scribble-macos.zip
 
 # The icon is drawn by scripts/make-icon.swift. These are the copies checked in for the
 # README, the Windows and Linux app, the video and the website.
 icons:
 	swift scripts/make-icon.swift --png 256 docs/images/icon.png
-	swift scripts/make-icon.swift --png 256 python/src/voice_annotate/resources/icon.png
+	swift scripts/make-icon.swift --png 256 python/src/scribble/resources/icon.png
 	swift scripts/make-icon.swift --png 256 video/public/icon.png
 	swift scripts/make-icon.swift --png 512 site/assets/icon.png --bleed
 

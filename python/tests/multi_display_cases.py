@@ -13,11 +13,11 @@ from pathlib import Path
 import pytest
 from PySide6.QtGui import QGuiApplication
 
-from voice_annotate import processor, render, screens, sounds
-from voice_annotate.clipboard import RecentsStore
-from voice_annotate.core.models import AnnotationTool
-from voice_annotate.session import Phase, SessionController
-from voice_annotate.settings import AppSettings
+from scribble import processor, render, screens, sounds
+from scribble.clipboard import RecentsStore
+from scribble.core.models import AnnotationTool
+from scribble.session import Phase, SessionController
+from scribble.settings import AppSettings
 
 sys.path.insert(0, str(Path(__file__).parent))
 from fakes import FakeAudio, FakeGrabber, FakePlatform, pump, wait_until  # noqa: E402
@@ -39,7 +39,7 @@ _controllers = []
 
 @pytest.fixture
 def controller(qapp, tmp_path, monkeypatch):
-    monkeypatch.setenv("VOICE_ANNOTATE_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("SCRIBBLE_HOME", str(tmp_path / "home"))
     sounds.enabled = False
     c = SessionController(
         AppSettings(),

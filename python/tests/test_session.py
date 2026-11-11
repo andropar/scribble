@@ -11,13 +11,13 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtTest import QTest
 
-from voice_annotate import clipboard, paths, sounds
-from voice_annotate.clipboard import RecentsStore
-from voice_annotate.core.models import AnnotationTool, CaptureMode
-from voice_annotate.session import HUD_LEGEND_NOTE, Phase, SessionController
-from voice_annotate.settings import AppSettings, ClipboardFormat, DrawModifier, HotkeyAction
-from voice_annotate.transcriber import Status
-from voice_annotate.ui.overlay import SnapshotOverlay, WalkthroughOverlay
+from scribble import clipboard, paths, sounds
+from scribble.clipboard import RecentsStore
+from scribble.core.models import AnnotationTool, CaptureMode
+from scribble.session import HUD_LEGEND_NOTE, Phase, SessionController
+from scribble.settings import AppSettings, ClipboardFormat, DrawModifier, HotkeyAction
+from scribble.transcriber import Status
+from scribble.ui.overlay import SnapshotOverlay, WalkthroughOverlay
 
 sys.path.insert(0, str(Path(__file__).parent))
 from fakes import FakeAudio, FakeGrabber, FakePlatform, pump, wait_until  # noqa: E402
@@ -40,7 +40,7 @@ _controllers = []
 
 @pytest.fixture
 def app(qapp, tmp_path, monkeypatch):
-    monkeypatch.setenv("VOICE_ANNOTATE_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("SCRIBBLE_HOME", str(tmp_path / "home"))
     sounds.enabled = False
     settings = AppSettings()
     platform, grabber = FakePlatform(), FakeGrabber()
@@ -245,7 +245,7 @@ def test_walkthrough_flow(app):
     assert wait_until(lambda: bool(controller.finished), 30)
     capture = controller.finished[0]
     assert capture is not None, controller.toast.detail
-    from voice_annotate import processor
+    from scribble import processor
 
     processor.wait_for_background()
     folder = Path(capture.folder)
@@ -289,7 +289,7 @@ def test_walkthrough_needs_continuous_capture(app):
 
 def test_dictation_flow(app, monkeypatch):
     controller = app
-    monkeypatch.setattr("voice_annotate.session.input_device_name", lambda: "Fake Mic")
+    monkeypatch.setattr("scribble.session.input_device_name", lambda: "Fake Mic")
     controller.handle(HotkeyAction.DICTATION)
     assert controller.phase == Phase.DICTATION and controller.hud.isVisible()
     assert "Dictating" in controller.hud._message.text() and not controller.overlays
@@ -309,7 +309,7 @@ def test_dictation_flow(app, monkeypatch):
 
 def test_dictation_without_microphone(app, monkeypatch):
     controller = app
-    monkeypatch.setattr("voice_annotate.session.input_device_name", lambda: None)
+    monkeypatch.setattr("scribble.session.input_device_name", lambda: None)
     controller.start_dictation()
     assert controller.phase == Phase.IDLE and controller.toast.text == "No microphone found"
 
@@ -370,11 +370,11 @@ def test_recorder_and_pipeline_with_full_hd_frames(qapp, tmp_path):
     the sparse timestamps a mostly static screen produces."""
     import time
 
-    from voice_annotate import processor
-    from voice_annotate.core.geometry import Size
-    from voice_annotate.processor import CaptureInput, DisplayInfo
-    from voice_annotate.recorder import WalkthroughRecorder
-    from voice_annotate.screens import Display
+    from scribble import processor
+    from scribble.core.geometry import Size
+    from scribble.processor import CaptureInput, DisplayInfo
+    from scribble.recorder import WalkthroughRecorder
+    from scribble.screens import Display
 
     screen = QGuiApplication.primaryScreen()
     display = Display(0, "Full HD", screen, screen.geometry(), 1.0, (0, 0, 1920, 1080))
@@ -411,7 +411,7 @@ def test_recorder_and_pipeline_with_full_hd_frames(qapp, tmp_path):
     processor.wait_for_background()
     events = json.loads((tmp_path / "events.json").read_text(encoding="utf-8"))
     assert [f["reasons"] for f in events["frames"]] == [["start"], ["screen change"]]
-    from voice_annotate import render
+    from scribble import render
 
     first, second = (render.load_image(p) for p in capture.frame_paths)
     assert (first.width(), first.height()) == (1568, 882)
@@ -425,7 +425,7 @@ def test_recorder_and_pipeline_with_full_hd_frames(qapp, tmp_path):
 
 
 def test_tray_menu_follows_the_app_state(app):
-    from voice_annotate.ui.tray import TrayController
+    from scribble.ui.tray import TrayController
 
     controller = app
     opened = []
@@ -447,7 +447,7 @@ def test_tray_menu_follows_the_app_state(app):
         "Walkthrough\tCtrl+Alt+Shift+W",
         "Dictation\tCtrl+Alt+Shift+T",
     ]
-    assert "Recent captures" in idle and "Settings…" in idle and "Quit voice-annotate" in idle
+    assert "Recent captures" in idle and "Settings…" in idle and "Quit Scribble" in idle
     assert titles(action(tray.menu, "Recent captures").menu()) == ["No captures yet"]
 
     # A shortcut that could not be registered is flagged, and not advertised.

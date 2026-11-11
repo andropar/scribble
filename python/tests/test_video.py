@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from voice_annotate import video
+from scribble import video
 
 
 def solid(w, h, bgr):

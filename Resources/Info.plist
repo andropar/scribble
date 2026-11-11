@@ -5,9 +5,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>voice-annotate</string>
+	<string>Scribble</string>
 	<key>CFBundleExecutable</key>
-	<string>VoiceAnnotate</string>
+	<string>Scribble</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
@@ -15,13 +15,13 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>voice-annotate</string>
+	<string>Scribble</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.4.0</string>
+	<string>0.5.0</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>4</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
 	<key>LSUIElement</key>
@@ -29,8 +29,8 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>voice-annotate records your voice while you capture the screen and transcribes it on-device.</string>
+	<string>Scribble records your voice while you capture the screen and transcribes it on-device.</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>voice-annotate takes screenshots and screen recordings when you press its shortcut.</string>
+	<string>Scribble takes screenshots and screen recordings when you press its shortcut.</string>
 </dict>
 </plist>

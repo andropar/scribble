@@ -18,11 +18,9 @@ import inject  # noqa: E402
 from fakes import pump  # noqa: E402
 from helpers import FakeTranscriber  # noqa: E402
 
-from voice_annotate import platform as platforms, render, screens  # noqa: E402
+from scribble import platform as platforms, render, screens  # noqa: E402
 
-ARTIFACTS = Path(
-    os.environ.get("VOICE_ANNOTATE_ARTIFACTS") or tempfile.mkdtemp(prefix="voice-annotate-artifacts-")
-)
+ARTIFACTS = Path(os.environ.get("SCRIBBLE_ARTIFACTS") or tempfile.mkdtemp(prefix="scribble-artifacts-"))
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 HYPER = ("ctrl", "alt", "shift")
 BLUE, RED, GREEN, PURPLE = (0x2E, 0x6F, 0xD0), (0xD0, 0x4A, 0x2E), (0x2E, 0xA8, 0x6F), (0x8A, 0x2E, 0xD0)
@@ -95,7 +93,7 @@ class AppWindow(QWidget):
         self.clicks = []
         self._color = QColor(color)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
-        self.setWindowTitle("voice-annotate test target")
+        self.setWindowTitle("scribble test target")
         self.setGeometry(display.geometry.x() + x, display.geometry.y() + y, w, h)
 
     def set_color(self, color: str) -> None:

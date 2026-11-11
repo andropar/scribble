@@ -1,10 +1,10 @@
 # Screen capture · Snapshot · 0:19 · 2026-11-05 10:23
 
-The user took a screenshot and talked while drawing on it (voice-annotate).
+The user took a screenshot and talked while drawing on it (Scribble).
 Marks in the images are the user's own: numbered ones (#1, #2, …) point at something, unnumbered pen strokes are freehand drawing. Each is referenced in the transcript at the moment it was drawn. Coordinates are pixels in the referenced image, origin top-left.
 
 Screenshots:
-- frame 1 · 00:00 · 1568×1018 · ~/.voice-annotate/captures/2026-11-05_10-23-30/frame_01.png
+- frame 1 · 00:00 · 1568×1018 · ~/.scribble/captures/2026-11-05_10-23-30/frame_01.png
 
 ## Transcript
 
@@ -17,4 +17,4 @@ Screenshots:
 - #3 box around (290,908)-(425,966) in frame 1 · 00:14
 - #4 arrow from (446,910) pointing at (809,230) in frame 1 · 00:17
 
-Folder: /Users/jrothadmin/.voice-annotate/captures/2026-11-05_10-23-30
+Folder: /Users/jrothadmin/.scribble/captures/2026-11-05_10-23-30

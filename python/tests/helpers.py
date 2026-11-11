@@ -8,9 +8,9 @@ import numpy as np
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter
 
-from voice_annotate import render
-from voice_annotate.core.geometry import Size
-from voice_annotate.core.models import (
+from scribble import render
+from scribble.core.geometry import Size
+from scribble.core.models import (
     BLUE,
     GREEN,
     MAGENTA,
@@ -22,7 +22,7 @@ from voice_annotate.core.models import (
     SpeechSegment,
     Word,
 )
-from voice_annotate.transcriber import TranscriptionOutput
+from scribble.transcriber import TranscriptionOutput
 
 
 class FakeTranscriber:

@@ -15,11 +15,10 @@
         ? "linux"
         : "";
   var names = { win: "Windows", mac: "macOS", linux: "Linux" };
-  var base =
-    "https://github.com/andropar/voice-annotate/releases/latest/download/";
+  var base = "https://github.com/andropar/scribble/releases/latest/download/";
   var files = {
-    win: base + "voice-annotate-windows-setup.exe",
-    mac: base + "voice-annotate-macos.zip",
+    win: base + "scribble-windows-setup.exe",
+    mac: base + "scribble-macos.zip",
   };
 
   var cta = document.getElementById("cta");

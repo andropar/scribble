@@ -10,10 +10,10 @@ sys.path.insert(0, str(HERE.parent))
 from fakes import FakeAudio, pump, wait_until  # noqa: E402
 from support import AppWindow, Env, Transcriber  # noqa: E402
 
-from voice_annotate import sounds  # noqa: E402
-from voice_annotate.clipboard import RecentsStore  # noqa: E402
-from voice_annotate.session import Phase, SessionController  # noqa: E402
-from voice_annotate.settings import AppSettings  # noqa: E402
+from scribble import sounds  # noqa: E402
+from scribble.clipboard import RecentsStore  # noqa: E402
+from scribble.session import Phase, SessionController  # noqa: E402
+from scribble.settings import AppSettings  # noqa: E402
 
 # Controllers stay referenced for the whole run (see tests/test_session.py).
 _controllers = []
@@ -47,7 +47,7 @@ def target(env):
 
 @pytest.fixture
 def controller(env, tmp_path, monkeypatch):
-    monkeypatch.setenv("VOICE_ANNOTATE_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("SCRIBBLE_HOME", str(tmp_path / "home"))
     sounds.enabled = False
     c = SessionController(
         AppSettings(),

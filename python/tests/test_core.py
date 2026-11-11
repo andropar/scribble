@@ -1,4 +1,4 @@
-"""Port of Tests/VoiceAnnotateCoreTests/CoreTests.swift: both apps must agree on every case."""
+"""Port of Tests/ScribbleCoreTests/CoreTests.swift: both apps must agree on every case."""
 
 import math
 from datetime import datetime, timezone
@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from voice_annotate.core import describer, keyframes, markdown
-from voice_annotate.core.geometry import CoordinateMapper, Rect, Size, detail_rect, fit_size, round_half_away
-from voice_annotate.core.keyframes import KeyframeConfig, KeyframeSelection
-from voice_annotate.core.markdown import CaptureDocument, DetailRef, FrameRef, Marker
-from voice_annotate.core.models import (
+from scribble.core import describer, keyframes, markdown
+from scribble.core.geometry import CoordinateMapper, Rect, Size, detail_rect, fit_size, round_half_away
+from scribble.core.keyframes import KeyframeConfig, KeyframeSelection
+from scribble.core.markdown import CaptureDocument, DetailRef, FrameRef, Marker
+from scribble.core.models import (
     RED,
     Annotation,
     AnnotationShape,

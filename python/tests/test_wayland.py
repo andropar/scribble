@@ -11,8 +11,8 @@ import pytest
 from PySide6.QtCore import QRect
 from PySide6.QtGui import QColor, QGuiApplication, QImage
 
-from voice_annotate import clipboard, platform as platforms, screens
-from voice_annotate.screens import Display, WaylandGrabber
+from scribble import clipboard, platform as platforms, screens
+from scribble.screens import Display, WaylandGrabber
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell stand-ins")
 
@@ -50,8 +50,8 @@ def test_wayland_session_detection(monkeypatch):
 
 
 def test_wayland_platform_is_a_reduced_mode():
-    from voice_annotate.platform.x11 import WaylandPlatform
-    from voice_annotate.settings import HotkeyAction
+    from scribble.platform.x11 import WaylandPlatform
+    from scribble.settings import HotkeyAction
 
     # No X connection needed for what the mode promises.
     platform = WaylandPlatform.__new__(WaylandPlatform)
@@ -62,11 +62,7 @@ def test_wayland_platform_is_a_reduced_mode():
     failures = hotkeys.set_hotkeys({"snapshot": HotkeyAction.SNAPSHOT.default_hotkey})
     assert "snapshot" in failures
     notes = " ".join(platform.notes())
-    assert (
-        "voice-annotate snapshot" in notes
-        and "voice-annotate toggle-draw" in notes
-        and "X11 session" in notes
-    )
+    assert "scribble snapshot" in notes and "scribble toggle-draw" in notes and "X11 session" in notes
 
 
 def test_screenshot_comes_from_the_desktop_tool_and_is_cut_per_display(qapp, tools, tmp_path):

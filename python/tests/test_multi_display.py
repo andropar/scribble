@@ -47,7 +47,7 @@ def test_captures_across_two_displays_with_mixed_scaling(tmp_path):
         # letter would run into.
         QT_QPA_PLATFORM="offscreen:configfile={}".format(config.name),
         # The offscreen platform crashes while tearing down its emulated screens at exit.
-        VOICE_ANNOTATE_EXIT_AFTER_TESTS="1",
+        SCRIBBLE_EXIT_AFTER_TESTS="1",
     )
     for name in ("QT_SCALE_FACTOR", "QT_SCREEN_SCALE_FACTORS"):
         env.pop(name, None)

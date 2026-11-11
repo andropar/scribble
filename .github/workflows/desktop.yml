@@ -47,9 +47,9 @@ jobs:
 
       - name: Test folders
         run: |
-          echo "VOICE_ANNOTATE_ARTIFACTS=$RUNNER_TEMP/artifacts" >> "$GITHUB_ENV"
-          echo "VOICE_ANNOTATE_TEST_HOME=$RUNNER_TEMP/va-home" >> "$GITHUB_ENV"
-          echo "VOICE_ANNOTATE_SPEECH=$RUNNER_TEMP/speech.wav" >> "$GITHUB_ENV"
+          echo "SCRIBBLE_ARTIFACTS=$RUNNER_TEMP/artifacts" >> "$GITHUB_ENV"
+          echo "SCRIBBLE_TEST_HOME=$RUNNER_TEMP/va-home" >> "$GITHUB_ENV"
+          echo "SCRIBBLE_SPEECH=$RUNNER_TEMP/speech.wav" >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v5
         with:
@@ -83,7 +83,7 @@ jobs:
 
       - name: Speech sample (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' && !matrix.desktop_only }}
-        run: espeak-ng -v en-us -s 140 -w "$VOICE_ANNOTATE_SPEECH" "This button is broken. Please move the legend below the chart."
+        run: espeak-ng -v en-us -s 140 -w "$SCRIBBLE_SPEECH" "This button is broken. Please move the legend below the chart."
 
       - name: Speech sample (Windows)
         if: ${{ !cancelled() && runner.os == 'Windows' }}
@@ -91,7 +91,7 @@ jobs:
         run: |
           Add-Type -AssemblyName System.Speech
           $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
-          $voice.SetOutputToWaveFile($env:VOICE_ANNOTATE_SPEECH)
+          $voice.SetOutputToWaveFile($env:SCRIBBLE_SPEECH)
           $voice.Speak("This button is broken. Please move the legend below the chart.")
           $voice.Dispose()
 
@@ -106,7 +106,7 @@ jobs:
       - name: Transcription tests (real Whisper model)
         if: ${{ !cancelled() && !matrix.desktop_only }}
         env:
-          VOICE_ANNOTATE_TEST_MODEL: "1"
+          SCRIBBLE_TEST_MODEL: "1"
         run: python -m pytest -q -m model -o faulthandler_timeout=600
 
       - name: Virtual microphone (Linux)
@@ -133,7 +133,7 @@ jobs:
           COMPOSITOR: ${{ matrix.compositor }}
           SCREEN: ${{ matrix.screen }}
           QT_SCALE_FACTOR: ${{ matrix.scale_factor }}
-          VOICE_ANNOTATE_LOOPBACK: "1"
+          SCRIBBLE_LOOPBACK: "1"
         run: |
           # An unset matrix value arrives as an empty variable; Qt must not see those.
           for name in SCREEN QT_SCALE_FACTOR; do
@@ -192,7 +192,7 @@ jobs:
         run: |
           python -m pip install -e . pyinstaller
           python packaging/build.py
-          du -sh dist/voice-annotate
+          du -sh dist/scribble
           ls -l dist
 
       - name: Speech sample (Linux)
@@ -211,67 +211,109 @@ jobs:
 
       - name: Try the build (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a python packaging/smoke_test.py dist/voice-annotate "$RUNNER_TEMP/speech.wav"
+        run: xvfb-run -a python packaging/smoke_test.py dist/scribble "$RUNNER_TEMP/speech.wav"
 
       - name: Try the build (Windows)
         if: runner.os == 'Windows'
-        run: python packaging/smoke_test.py dist/voice-annotate "$RUNNER_TEMP/speech.wav"
+        run: python packaging/smoke_test.py dist/scribble "$RUNNER_TEMP/speech.wav"
 
       - name: Install from a wheel, as users do
         run: |
           python -m pip wheel . --no-deps -w "$RUNNER_TEMP/wheel"
           python -m venv "$RUNNER_TEMP/venv"
           if [ "$RUNNER_OS" = "Windows" ]; then bin="$RUNNER_TEMP/venv/Scripts"; else bin="$RUNNER_TEMP/venv/bin"; fi
-          (cd "$RUNNER_TEMP/wheel" && "$bin/python" -m pip install voice_annotate-*.whl)
-          "$bin/voice-annotate" --version
-          ls "$bin" | grep voice-annotate-gui
-          QT_QPA_PLATFORM=offscreen "$bin/voice-annotate" --render-demo "$RUNNER_TEMP/demo.png"
+          (cd "$RUNNER_TEMP/wheel" && "$bin/python" -m pip install scribble-*.whl)
+          "$bin/scribble" --version
+          ls "$bin" | grep scribble-gui
+          QT_QPA_PLATFORM=offscreen "$bin/scribble" --render-demo "$RUNNER_TEMP/demo.png"
           # The icon travels inside the package.
-          "$bin/python" -c "import os, voice_annotate; p = os.path.join(os.path.dirname(voice_annotate.__file__), 'resources', 'icon.png'); assert os.path.isfile(p), p"
+          "$bin/python" -c "import os, scribble; p = os.path.join(os.path.dirname(scribble.__file__), 'resources', 'icon.png'); assert os.path.isfile(p), p"
 
       - name: Try the installer (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $setup = "dist\voice-annotate-windows-setup.exe"
+          $setup = "dist\scribble-windows-setup.exe"
+          $app = "$env:LOCALAPPDATA\Programs\Scribble"
+          $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+
+          # An update over 0.4.0, when the app was called voice-annotate and started at sign-in.
+          $old = "$env:RUNNER_TEMP\voice-annotate-setup.exe"
+          Invoke-WebRequest "https://github.com/${{ github.repository }}/releases/download/v0.4.0/voice-annotate-windows-setup.exe" -OutFile $old
+          $p = Start-Process $old -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "the 0.4.0 installer exited with $($p.ExitCode)" }
+          $oldApp = "$env:LOCALAPPDATA\Programs\voice-annotate"
+          if (-not (Test-Path "$oldApp\voice-annotate.exe")) { throw "0.4.0 did not install" }
+          Set-ItemProperty $runKey -Name 'voice-annotate' -Value "`"$oldApp\voice-annotate.exe`""
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "the update exited with $($p.ExitCode)" }
+          & "$app\scribble-cli.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "the updated app does not run" }
+          if (Test-Path $oldApp) { throw "the update left the voice-annotate folder behind" }
+          if (Test-Path "$menu\voice-annotate") { throw "the update left the old Start menu entry behind" }
+          $run = Get-ItemProperty $runKey
+          if ($run.'voice-annotate') { throw "the update left the old autostart entry" }
+          if ($run.'Scribble' -notlike "*scribble.exe*") { throw "the update lost the start at sign-in" }
+          $u = Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "uninstalling the update exited with $($u.ExitCode)" }
+          Start-Sleep 3
+
+          # A fresh installation.
           $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=autostart' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "installer exited with $($p.ExitCode)" }
-          $app = "$env:LOCALAPPDATA\Programs\voice-annotate"
-          & "$app\voice-annotate-cli.exe" --version
+          & "$app\scribble-cli.exe" --version
           if ($LASTEXITCODE -ne 0) { throw "installed app does not run" }
-          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\voice-annotate\voice-annotate.lnk")) { throw "no Start menu entry" }
-          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-          if ($run.'voice-annotate' -notlike "*voice-annotate.exe*") { throw "autostart entry missing" }
+          if (-not (Test-Path "$menu\Scribble\Scribble.lnk")) { throw "no Start menu entry" }
+          $run = Get-ItemProperty $runKey
+          if ($run.'Scribble' -notlike "*scribble.exe*") { throw "autostart entry missing" }
           python packaging/smoke_test.py $app "$env:RUNNER_TEMP\speech.wav"
           $u = Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
           if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
           Start-Sleep 3
-          if (Test-Path "$app\voice-annotate.exe") { throw "uninstall left the app behind" }
-          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-          if ($run.'voice-annotate') { throw "uninstall left the autostart entry" }
+          if (Test-Path "$app\scribble.exe") { throw "uninstall left the app behind" }
+          $run = Get-ItemProperty $runKey
+          if ($run.'Scribble') { throw "uninstall left the autostart entry" }
 
       - name: Try the installer (Linux)
         if: runner.os == 'Linux'
         run: |
           export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
-          mkdir "$RUNNER_TEMP/unpacked" && tar -xzf dist/voice-annotate-linux-x86_64.tar.gz -C "$RUNNER_TEMP/unpacked"
-          "$RUNNER_TEMP/unpacked/voice-annotate/install.sh"
-          "$HOME/.local/bin/voice-annotate-cli" --version
-          grep -q "Exec=$HOME/.local/opt/voice-annotate/voice-annotate" "$HOME/.local/share/applications/voice-annotate.desktop"
-          test -f "$HOME/.local/share/icons/hicolor/256x256/apps/voice-annotate.png"
-          xvfb-run -a python packaging/smoke_test.py "$HOME/.local/opt/voice-annotate"
-          ls "$HOME/.local/opt/voice-annotate/_internal" | grep -i -E "portaudio|xcb-cursor" || echo "(portaudio and xcb-cursor are not bundled)"
-          "$HOME/.local/opt/voice-annotate/install.sh" --uninstall
+          mkdir "$RUNNER_TEMP/unpacked" && tar -xzf dist/scribble-linux-x86_64.tar.gz -C "$RUNNER_TEMP/unpacked"
+
+          # An update over 0.4.0, when the app was called voice-annotate and started at login.
+          mkdir "$RUNNER_TEMP/old"
+          curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/v0.4.0/voice-annotate-linux-x86_64.tar.gz" | tar -xz -C "$RUNNER_TEMP/old"
+          "$RUNNER_TEMP/old/voice-annotate/install.sh"
+          test -x "$HOME/.local/bin/voice-annotate"
+          mkdir -p "$HOME/.config/autostart"
+          printf '[Desktop Entry]\nType=Application\nName=voice-annotate\nExec=%s\n' "$HOME/.local/opt/voice-annotate/voice-annotate" > "$HOME/.config/autostart/voice-annotate.desktop"
+          "$RUNNER_TEMP/unpacked/scribble/install.sh"
+          "$HOME/.local/bin/scribble-cli" --version
           test ! -e "$HOME/.local/opt/voice-annotate" && test ! -e "$HOME/.local/bin/voice-annotate"
+          test ! -e "$HOME/.local/share/applications/voice-annotate.desktop" && test ! -e "$HOME/.config/autostart/voice-annotate.desktop"
+          grep -q "Exec=$HOME/.local/opt/scribble/scribble" "$HOME/.config/autostart/scribble.desktop"
+          "$HOME/.local/opt/scribble/install.sh" --uninstall
+          test ! -e "$HOME/.config/autostart/scribble.desktop"
+
+          # A fresh installation.
+          "$RUNNER_TEMP/unpacked/scribble/install.sh"
+          "$HOME/.local/bin/scribble-cli" --version
+          grep -q "Exec=$HOME/.local/opt/scribble/scribble" "$HOME/.local/share/applications/scribble.desktop"
+          test -f "$HOME/.local/share/icons/hicolor/256x256/apps/scribble.png"
+          xvfb-run -a python packaging/smoke_test.py "$HOME/.local/opt/scribble"
+          ls "$HOME/.local/opt/scribble/_internal" | grep -i -E "portaudio|xcb-cursor" || echo "(portaudio and xcb-cursor are not bundled)"
+          "$HOME/.local/opt/scribble/install.sh" --uninstall
+          test ! -e "$HOME/.local/opt/scribble" && test ! -e "$HOME/.local/bin/scribble"
 
       - name: Upload the build
         uses: actions/upload-artifact@v4
         with:
-          name: voice-annotate-${{ runner.os }}
+          name: scribble-${{ runner.os }}
           path: |
-            python/dist/voice-annotate-windows-setup.exe
-            python/dist/voice-annotate-windows-x64.zip
-            python/dist/voice-annotate-linux-x86_64.tar.gz
+            python/dist/scribble-windows-setup.exe
+            python/dist/scribble-windows-x64.zip
+            python/dist/scribble-linux-x86_64.tar.gz
           if-no-files-found: error
           retention-days: 14
 
@@ -282,5 +324,5 @@ jobs:
         run: |
           shopt -s nullglob
           # Each system builds its own files; the patterns drop the ones that are not here.
-          files=(dist/voice-annotate-windows-setup.ex[e] dist/voice-annotate-windows-x64.zi[p] dist/voice-annotate-linux-x86_64.tar.g[z])
+          files=(dist/scribble-windows-setup.ex[e] dist/scribble-windows-x64.zi[p] dist/scribble-linux-x86_64.tar.g[z])
           gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber

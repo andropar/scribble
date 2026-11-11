@@ -1,10 +1,10 @@
 {
-  "name": "voice-annotate-video",
+  "name": "scribble-video",
   "private": true,
-  "description": "Remotion promo video for voice-annotate",
+  "description": "Remotion promo video for Scribble",
   "scripts": {
     "studio": "remotion studio",
-    "render": "remotion render Promo out/voice-annotate.mp4 --codec h264 --crf 18",
+    "render": "remotion render Promo out/scribble.mp4 --codec h264 --crf 18",
     "poster": "remotion still Promo out/poster.png --frame=0",
     "still": "remotion still"
   },

@@ -9,14 +9,14 @@
   no API keys.
 </p>
 
-<p align="center"><sub>Scribble used to be called voice-annotate. Until the next release the app, its
-command, its <code>~/.voice-annotate</code> folder and the download files keep that name.</sub></p>
+<p align="center"><sub>Scribble was called voice-annotate up to version 0.4. Updating keeps your
+settings, captures and models: <code>~/.scribble</code> becomes <code>~/.scribble</code>.</sub></p>
 
 <p align="center">
-  <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip"><b>Download for macOS</b></a> ·
-  <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe"><b>Windows installer</b></a> ·
+  <a href="https://github.com/andropar/scribble/releases/latest/download/scribble-macos.zip"><b>Download for macOS</b></a> ·
+  <a href="https://github.com/andropar/scribble/releases/latest/download/scribble-windows-setup.exe"><b>Windows installer</b></a> ·
   <a href="#windows-and-linux"><b>Linux</b></a> ·
-  <a href="https://jroth.space/voice-annotate/">Website</a>
+  <a href="https://jroth.space/scribble/">Website</a>
 </p>
 
 ![Annotated screenshot of a training dashboard next to the capture.md an agent receives](docs/images/hero.png)
@@ -100,7 +100,7 @@ Some of the design decisions:
   capture was. The transcript is the one a single pass over the whole recording gives
   (`--eval-live` compares the two word by word).
 - **Testable core.** Shape classification, keyframe selection, transcript interleaving,
-  markdown composition and coordinate mapping live in `VoiceAnnotateCore`, a pure Swift
+  markdown composition and coordinate mapping live in `ScribbleCore`, a pure Swift
   module with unit tests. The app target holds only the AppKit, ScreenCaptureKit and
   WhisperKit glue.
 
@@ -112,12 +112,16 @@ For Windows and Linux see [below](#windows-and-linux). The macOS app requires ma
 later on Apple Silicon.
 
 1. Download
-   [voice-annotate-macos.zip](https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip),
-   unzip it and move `voice-annotate.app` to Applications.
+   [scribble-macos.zip](https://github.com/andropar/scribble/releases/latest/download/scribble-macos.zip),
+   unzip it and move `Scribble.app` to Applications.
 2. The app isn't notarized (that needs a paid Apple Developer ID), so macOS blocks the first
    launch. Open it once, click **Done**, then go to System Settings → Privacy & Security and
-   click **Open Anyway** next to the voice-annotate message. Alternatively, in Terminal:
-   `xattr -dr com.apple.quarantine /Applications/voice-annotate.app`.
+   click **Open Anyway** next to the Scribble message. Alternatively, in Terminal:
+   `xattr -dr com.apple.quarantine /Applications/Scribble.app`.
+
+Updating from voice-annotate: quit it, delete `voice-annotate.app` and install `Scribble.app`
+as above. Your settings stay, and captures and models move to `~/.scribble` on the first
+start (a link stays at `~/.voice-annotate`, so paths in earlier captures still open).
 
 Or build it yourself (see [Build](#build)).
 
@@ -127,7 +131,7 @@ Or build it yourself (see [Build](#build)).
   only applies it after a relaunch), and allow the **Microphone**. Until Screen Recording is
   granted, the menu bar menu shows a warning that opens the setup window.
 - **Model download.** The Whisper model (~630 MB) downloads once to
-  `~/.voice-annotate/models`; the menu bar menu shows progress (and a retry if it fails). A
+  `~/.scribble/models`; the menu bar menu shows progress (and a retry if it fails). A
   capture finished before the download is done waits for it, with the progress on screen.
   Settings also offer lighter multilingual models, Small (~490 MB) and Base (~150 MB), which
   are less accurate outside English, and English-only ones, which warn if you pick another
@@ -139,7 +143,7 @@ Or build it yourself (see [Build](#build)).
 - **After updating** to a new release (or rebuilding with ad-hoc signing, or replacing the app
   with a differently signed build), macOS may keep showing Screen Recording as enabled while
   the app still can't record: the grant belongs to the old build, and switching it off and on
-  doesn't help. Remove voice-annotate from the list in System Settings → Privacy & Security →
+  doesn't help. Remove Scribble from the list in System Settings → Privacy & Security →
   Screen Recording (the − button), then add it again, or run
   `tccutil reset ScreenCapture com.jroth.voiceannotate`, reopen the app and grant it again.
 
@@ -155,7 +159,7 @@ Or build it yourself (see [Build](#build)).
 Snapshot tool keys: `P` pen · `A` arrow · `R` box · `O` ellipse · `H` highlighter ·
 `N` pin · `1–6` colors · `⌘Z` undo.
 
-Each capture is saved as a bundle in `~/.voice-annotate/captures/<timestamp>/`, containing
+Each capture is saved as a bundle in `~/.scribble/captures/<timestamp>/`, containing
 `capture.md`, the annotated frames, the audio, the recording and an `events.json` timeline.
 Bundles are pruned after 14 days.
 
@@ -168,36 +172,39 @@ test checks that both produce the same file from the same capture.
 ### Install
 
 **Windows** (10 or 11, 64-bit): download and run
-[voice-annotate-windows-setup.exe](https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe).
+[scribble-windows-setup.exe](https://github.com/andropar/scribble/releases/latest/download/scribble-windows-setup.exe).
 It installs for your user without administrator rights and can start the app at login. The
 installer is not code-signed, so SmartScreen asks once: **More info** → **Run anyway**.
 
 **Linux** (x86_64, glibc 2.35 or newer, i.e. Ubuntu 22.04 and later):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/andropar/voice-annotate/master/python/packaging/install-linux.sh | sh
+curl -fsSL https://raw.githubusercontent.com/andropar/scribble/master/python/packaging/install-linux.sh | sh
 ```
 
-This puts the app in `~/.local/opt/voice-annotate` with a menu entry and a `voice-annotate`
+This puts the app in `~/.local/opt/scribble` with a menu entry and a `scribble`
 command in `~/.local/bin`; nothing needs root. Run the script again to update, or with
 `sh -s -- --uninstall` to remove it. The same files are in
-[voice-annotate-linux-x86_64.tar.gz](https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-linux-x86_64.tar.gz)
+[scribble-linux-x86_64.tar.gz](https://github.com/andropar/scribble/releases/latest/download/scribble-linux-x86_64.tar.gz)
 if you would rather unpack it yourself and run `./install.sh`.
+
+Either one replaces an installation of voice-annotate, the app's name up to 0.4, and
+keeps its settings, captures, models and start at login.
 
 Both downloads are self-contained (no Python needed) and are built and tried out by
 [GitHub Actions](.github/workflows/desktop.yml) from this source. The app puts an icon in
 the system tray; *Settings* has *Launch at login*. On the first start it downloads a Whisper
-model to `~/.voice-annotate/models` (Small English, ~480 MB, when it runs on the CPU).
+model to `~/.scribble/models` (Small English, ~480 MB, when it runs on the CPU).
 
 With Python 3.9 or later you can also install it as a package, with
 [uv](https://docs.astral.sh/uv/) or `pipx`:
 
 ```bash
-uv tool install "git+https://github.com/andropar/voice-annotate#subdirectory=python"
+uv tool install "git+https://github.com/andropar/scribble#subdirectory=python"
 ```
 
 On Linux that route needs two system libraries (`sudo apt install libportaudio2
-libxcb-cursor0`). Start it with `voice-annotate` (on Windows, `voice-annotate-gui` starts it
+libxcb-cursor0`). Start it with `scribble` (on Windows, `scribble-gui` starts it
 without a console window).
 
 ### Use
@@ -213,7 +220,7 @@ Tool keys in a Snapshot are the same as on macOS, with `Ctrl+Z` for undo. All sh
 be changed in Settings; one that another program already holds is flagged there and in the
 tray menu.
 
-Every action is also a command for the running app: `voice-annotate snapshot`,
+Every action is also a command for the running app: `scribble snapshot`,
 `walkthrough`, `dictation`, `finish`, `toggle-draw`, `cancel`. Bind those in your desktop's
 keyboard settings if you prefer, or have to (see Wayland below).
 
@@ -249,14 +256,14 @@ The macOS app requires macOS 15+ on Apple Silicon and Xcode 16+ (Swift 6 toolcha
 ```bash
 make install   # build release, sign with your Apple Development identity, copy to ~/Applications
 make run       # install + launch
-make test      # unit tests (VoiceAnnotateCore)
+make test      # unit tests (ScribbleCore)
 make release   # ad-hoc signed zip for GitHub Releases, in build/
 ```
 
 Without an Apple Development identity the build is signed ad-hoc, so each rebuild looks
 like a new app to macOS: see *After updating* above for re-granting Screen Recording.
 
-The binary also has developer commands, e.g. `.build/debug/VoiceAnnotate --help`:
+The binary also has developer commands, e.g. `.build/debug/Scribble --help`:
 `--transcribe <audio>`, `--render-demo <out.png>`, `--demo-snapshot <audio> [screenshot annotations]`,
 `--test-screenshot [screen]`, `--test-walkthrough <seconds> [screen|all]`,
 `--eval-live <audio>...`. They use the app's
@@ -269,7 +276,7 @@ The Windows/Linux app (see [python/README.md](python/README.md)):
 ```bash
 cd python
 pip install -e ".[dev]"
-python -m voice_annotate      # run from source
+python -m scribble      # run from source
 pytest                        # core, pipeline and the capture state machine, headless
 ```
 

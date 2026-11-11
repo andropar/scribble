@@ -1,4 +1,4 @@
-# voice-annotate — Spec v0.3
+# Scribble — Spec v0.5
 
 A macOS menu bar utility: press a hotkey, talk, point and draw on screen, and get an
 agent-ready bundle (annotated images + timestamped transcript with grounded references to
@@ -123,7 +123,7 @@ post-hoc with `AVAssetImageGenerator` (zero tolerance), downscaled to 1568 px lo
 
 ## 5. Bundle
 
-`~/.voice-annotate/captures/2026-11-02_14-03-12/` (no spaces in paths so terminals and
+`~/.scribble/captures/2026-11-02_14-03-12/` (no spaces in paths so terminals and
 agents handle them; auto-pruned after 14 days)
 
 ```
@@ -176,14 +176,14 @@ rendered beneath, for targets that take one image).
 Swift 6 toolchain (Swift 5 language mode), SwiftPM, macOS 15+, `LSUIElement` agent app,
 assembled into a signed `.app` by `scripts/build-app.sh`.
 
-- `VoiceAnnotateCore` (pure, unit-tested): models, shape classifier, keyframe selector,
+- `ScribbleCore` (pure, unit-tested): models, shape classifier, keyframe selector,
   transcript interleaver, markdown composer, geometry mapping.
-- `VoiceAnnotate` (app): hotkeys (Carbon `RegisterEventHotKey`), `SessionController`
+- `Scribble` (app): hotkeys (Carbon `RegisterEventHotKey`), `SessionController`
   state machine, `ScreenCapturer` (SCScreenshotManager + SCStream → AVAssetWriter HEVC
   + live thumbnails), `AudioRecorder` (AVAudioEngine → 16 kHz mono + m4a), overlay
   (`NSPanel` + custom `NSView`, shared `AnnotationRenderer` for on-screen and offline
   rendering), HUD (SwiftUI in `NSPanel`), `Transcriber` (WhisperKit, preloaded at launch,
-  model in `~/.voice-annotate/models`), `LiveTranscriber` (decodes WhisperKit's ≤30 s
+  model in `~/.scribble/models`), `LiveTranscriber` (decodes WhisperKit's ≤30 s
   pieces while recording, see below), `BundleWriter`, `ClipboardWriter`, settings window,
   onboarding/permissions window, launch-at-login (`SMAppService`).
 
@@ -277,8 +277,8 @@ in that pause moves one word on.
 
 A second implementation in `python/` (Python 3.9+, Qt 6 through PySide6), not a shared
 codebase: the macOS app is AppKit, ScreenCaptureKit and Core ML glue around a small core, and
-none of that glue exists elsewhere. What is shared is the behaviour. `voice_annotate.core` is
-a line-by-line port of `VoiceAnnotateCore`, its tests are the Swift tests, and a parity test
+none of that glue exists elsewhere. What is shared is the behaviour. `scribble.core` is
+a line-by-line port of `ScribbleCore`, its tests are the Swift tests, and a parity test
 feeds a capture's `events.json` from the macOS app through the port and expects the same
 `capture.md`, byte for byte.
 
@@ -291,7 +291,7 @@ feeds a capture's `events.json` from the macOS app through the port and expects 
 | Transcription | WhisperKit (Core ML) | faster-whisper (CTranslate2): CPU, or CUDA |
 | Hotkeys | Carbon `RegisterEventHotKey` | `RegisterHotKey` / X11 passive key grabs |
 | Rendering | Core Graphics | QPainter (same geometry, shadows approximated) |
-| Settings | UserDefaults | `~/.voice-annotate/settings.json` |
+| Settings | UserDefaults | `~/.scribble/settings.json` |
 
 Everything the app needs from the OS beyond Qt sits behind `platform.Platform`: global
 hotkeys, pointer and modifier state while other apps have focus, click-through, keeping a
@@ -302,7 +302,7 @@ Differences that follow from the platforms:
 - **Shortcuts** default to `Ctrl+Alt+Shift` + `S` / `W` / `T` / `F` / `D` (Walkthrough is `W`:
   GNOME reserves `Ctrl+Alt+Shift+R`). A shortcut another program holds is reported in the
   tray menu and in Settings instead of silently not working.
-- **Triggers.** Every action is also a command (`voice-annotate snapshot`, `walkthrough`,
+- **Triggers.** Every action is also a command (`scribble snapshot`, `walkthrough`,
   `dictation`, `finish`, `toggle-draw`, `cancel`) that the running instance executes, so a
   desktop's own shortcut settings can drive the app.
 - **Clipboard.** One item with several formats instead of several items: the markdown as

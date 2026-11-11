@@ -7,9 +7,9 @@
 <meta name="description" content="Screen capture for coding agents. Draw on your screen while you talk, then paste annotated screenshots and a transcript into Claude Code, Cursor or ChatGPT. Free and open source for macOS, Windows and Linux.">
 <meta property="og:title" content="Scribble — screen capture for coding agents">
 <meta property="og:description" content="Screen capture for coding agents. Draw on your screen while you talk, then paste annotated screenshots and a transcript.">
-<meta property="og:image" content="https://jroth.space/voice-annotate/assets/og.png">
-<meta property="og:url" content="https://jroth.space/voice-annotate/">
-<link rel="canonical" href="https://jroth.space/voice-annotate/">
+<meta property="og:image" content="https://jroth.space/scribble/assets/og.png">
+<meta property="og:url" content="https://jroth.space/scribble/">
+<link rel="canonical" href="https://jroth.space/scribble/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
     <a href="#how">How it works</a>
     <a href="#modes">Modes</a>
     <a href="#faq">Questions</a>
-    <a href="https://github.com/andropar/voice-annotate">GitHub</a>
+    <a href="https://github.com/andropar/scribble">GitHub</a>
     <a class="nav-cta" href="#download">Download</a>
   </nav>
 </header>
@@ -243,9 +243,9 @@
   <div class="split-head"><h2>Questions</h2></div>
   <div class="faq-list">
   <details><summary>Which agents does it work with?</summary><p>Any agent you can paste into. Terminals (Claude Code, Codex) take the transcript text, which lists the image files by path. Chat apps and browsers (Claude, ChatGPT, Cursor) take the attached files. If one target wants something else, the tray menu can copy any recent capture again in another format, including a single composite image.</p></details>
-  <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac a one-minute recording takes about five seconds once the model has warmed up. On Windows and Linux it runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
-  <details><summary>Does it understand languages other than English?</summary><p>Not yet. Transcription is set to English.</p></details>
-  <details><summary>What is different on Windows and Linux?</summary><p>The modes and the output are the same. The app is a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. On Wayland only Snapshot and Dictation work, and that mode is new. Details are in the <a href="https://github.com/andropar/voice-annotate#windows-and-linux">README</a>.</p></details>
+  <details><summary>How fast is the transcription?</summary><p>On an Apple Silicon Mac the capture is transcribed while you are still talking, so after you stop you wait a second or two, however long it was. On Windows and Linux transcription starts when you finish and runs on the CPU with a smaller English model by default; with an NVIDIA GPU and CUDA it uses the large one.</p></details>
+  <details><summary>Does it understand languages other than English?</summary><p>On macOS, yes: Settings has every language Whisper supports, and Auto-detect. On Windows and Linux transcription is English only for now.</p></details>
+  <details><summary>What is different on Windows and Linux?</summary><p>The modes and the output are the same. The app is a separate implementation with its own shortcuts. On Linux with X11 the capture toolbar is visible in walkthrough keyframes, and the capture tells the agent so. On Wayland only Snapshot and Dictation work, and that mode is new. Details are in the <a href="https://github.com/andropar/scribble#windows-and-linux">README</a>.</p></details>
   </div>
 </section>
 
@@ -253,7 +253,7 @@
   <div class="dl-head">
     <div>
       <h2>Download Scribble</h2>
-      <p class="price"><span data-mark="pen">Free</span> and open source under the <a href="https://github.com/andropar/voice-annotate/blob/master/LICENSE">MIT license</a>.</p>
+      <p class="price"><span data-mark="pen">Free</span> and open source under the <a href="https://github.com/andropar/scribble/blob/master/LICENSE">MIT license</a>.</p>
     </div>
     <div class="os-tabs" id="os-tabs" role="tablist" aria-label="Operating system" hidden>
       <button type="button" role="tab" data-os="mac" aria-selected="true">macOS</button>
@@ -265,11 +265,11 @@
     <article class="dl" data-os="mac">
       <div class="dl-get">
         <h3>macOS</h3>
-        <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-macos.zip">Download for macOS</a>
+        <a class="button primary" href="https://github.com/andropar/scribble/releases/latest/download/scribble-macos.zip">Download for macOS</a>
         <p class="req">macOS 15 or later, Apple Silicon</p>
       </div>
       <ol class="dl-steps">
-        <li><b>Move it to Applications</b>Unzip the download and drag the app into your Applications folder.</li>
+        <li><b>Move it to Applications</b>Unzip the download and drag Scribble into your Applications folder.</li>
         <li><b>Allow the first launch</b>The app is not notarized, so macOS blocks it once. Open it, then choose <em>Open Anyway</em> under System Settings → Privacy &amp; Security.</li>
         <li><b>Grant two permissions</b>Allow Screen Recording when asked and reopen the app, then allow the Microphone.</li>
       </ol>
@@ -277,7 +277,7 @@
     <article class="dl" data-os="win">
       <div class="dl-get">
         <h3>Windows</h3>
-        <a class="button primary" href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-windows-setup.exe">Download for Windows</a>
+        <a class="button primary" href="https://github.com/andropar/scribble/releases/latest/download/scribble-windows-setup.exe">Download for Windows</a>
         <p class="req">Windows 10 or 11, 64-bit</p>
       </div>
       <ol class="dl-steps">
@@ -289,8 +289,8 @@
     <article class="dl" data-os="linux">
       <div class="dl-get">
         <h3>Linux</h3>
-        <div class="cmd"><code id="linux-cmd">curl -fsSL https://raw.githubusercontent.com/andropar/voice-annotate/master/python/packaging/install-linux.sh | sh</code><button type="button" id="copy" aria-label="Copy command">Copy</button></div>
-        <p class="req">x86_64, Ubuntu 22.04 or newer · <a href="https://github.com/andropar/voice-annotate/releases/latest/download/voice-annotate-linux-x86_64.tar.gz">or get the .tar.gz</a></p>
+        <div class="cmd"><code id="linux-cmd">curl -fsSL https://raw.githubusercontent.com/andropar/scribble/master/python/packaging/install-linux.sh | sh</code><button type="button" id="copy" aria-label="Copy command">Copy</button></div>
+        <p class="req">x86_64, Ubuntu 22.04 or newer · <a href="https://github.com/andropar/scribble/releases/latest/download/scribble-linux-x86_64.tar.gz">or get the .tar.gz</a></p>
       </div>
       <ol class="dl-steps">
         <li><b>Run the command</b>It installs to <code>~/.local</code> and adds a menu entry. Nothing needs root.</li>
@@ -299,14 +299,14 @@
       </ol>
     </article>
   </div>
-  <p class="first-run">On first start the app downloads a speech model once (about 0.5 GB). After that it works offline. Until the next release the app and its files still carry the old name, voice-annotate.</p>
+  <p class="first-run">On first start the app downloads a speech model once (about 0.5 GB). After that it works offline. Scribble was called voice-annotate before version 0.5; updating keeps your settings, captures and models.</p>
 </section>
 
 </main>
 
 <footer>
   <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="24" height="24"><span>Scribble</span></a>
-  <p>Made by <a href="https://jroth.space">Johannes Roth</a> · <a href="https://github.com/andropar/voice-annotate">Source</a> · <a href="https://github.com/andropar/voice-annotate/issues">Report a problem</a></p>
+  <p>Made by <a href="https://jroth.space">Johannes Roth</a> · <a href="https://github.com/andropar/scribble">Source</a> · <a href="https://github.com/andropar/scribble/issues">Report a problem</a></p>
 </footer>
 
 <script src="app.js"></script>

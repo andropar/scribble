@@ -12,11 +12,11 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
-from voice_annotate import audio, ipc, paths, sounds, transcriber, video
-from voice_annotate.clipboard import RecentsStore, transcript_text
-from voice_annotate.core.models import CaptureMode
-from voice_annotate.processor import RecentCapture
-from voice_annotate.settings import (
+from scribble import audio, ipc, paths, sounds, transcriber, video
+from scribble.clipboard import RecentsStore, transcript_text
+from scribble.core.models import CaptureMode
+from scribble.processor import RecentCapture
+from scribble.settings import (
     AppSettings,
     ClipboardFormat,
     DrawModifier,
@@ -25,7 +25,7 @@ from voice_annotate.settings import (
     WhisperCompute,
     WhisperModel,
 )
-from voice_annotate.ui.windows import (
+from scribble.ui.windows import (
     HotkeyRecorder,
     OnboardingWindow,
     SettingsWindow,
@@ -39,7 +39,7 @@ from fakes import FakePlatform, pump, wait_until  # noqa: E402
 
 @pytest.fixture
 def home(tmp_path, monkeypatch):
-    monkeypatch.setenv("VOICE_ANNOTATE_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("SCRIBBLE_HOME", str(tmp_path / "home"))
     return tmp_path / "home"
 
 
@@ -324,7 +324,7 @@ def test_silence_is_not_sent_to_whisper(tmp_path):
 def test_piped_output_is_utf8_whatever_the_code_page(monkeypatch):
     import io
 
-    from voice_annotate import app
+    from scribble import app
 
     raw_out, raw_err = io.BytesIO(), io.BytesIO()
     monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw_out, encoding="cp1252"))
@@ -347,24 +347,24 @@ def test_piped_output_is_utf8_whatever_the_code_page(monkeypatch):
 
 
 def test_command_line_rejects_what_it_does_not_know(capsys):
-    from voice_annotate import app
+    from scribble import app
 
     # Unknown arguments must never start the app (a frozen build is re-run with interpreter
     # flags by helper processes).
-    assert app.main(["voice-annotate", "-B", "-S", "-c", "pass"]) == 2
-    assert app.main(["voice-annotate", "bogus"]) == 2
-    assert app.main(["voice-annotate", "--version"]) == 0
-    assert "voice-annotate " in capsys.readouterr().out
+    assert app.main(["scribble", "-B", "-S", "-c", "pass"]) == 2
+    assert app.main(["scribble", "bogus"]) == 2
+    assert app.main(["scribble", "--version"]) == 0
+    assert "scribble " in capsys.readouterr().out
 
 
 # MARK: triggers
 
 
 def test_trigger_server_round_trip(qapp):
-    """A second process (what ``voice-annotate snapshot`` is) reaches the running one."""
+    """A second process (what ``scribble snapshot`` is) reaches the running one."""
     import subprocess
 
-    name = "voice-annotate-test-{}".format(int(time.time() * 1000))
+    name = "scribble-test-{}".format(int(time.time() * 1000))
     seen = []
 
     def handle(command):
@@ -376,7 +376,7 @@ def test_trigger_server_round_trip(qapp):
     server = ipc.TriggerServer(handle, name=name)
     assert server.listen()
     client = (
-        "import sys; from voice_annotate import ipc; "
+        "import sys; from scribble import ipc; "
         "print(repr([ipc.send(c, name=sys.argv[1]) for c in ('snapshot', 'boom')]))"
     )
     process = subprocess.Popen([sys.executable, "-c", client, name], stdout=subprocess.PIPE, text=True)
@@ -405,7 +405,7 @@ def test_key_names_and_hotkey_rules():
 
 def test_key_names_map_to_native_codes():
     # Every key the recorder can produce must be registrable on both platforms.
-    from voice_annotate.platform import x11
+    from scribble.platform import x11
 
     names = ["S", "7", "F5", "F12", "Space", "Tab", "Return", "Left", "PageDown", "Delete"]
     assert all(key_name(k) for k in (Qt.Key_S, Qt.Key_7, Qt.Key_F5, Qt.Key_Space, Qt.Key_Left))
@@ -416,7 +416,7 @@ def test_key_names_map_to_native_codes():
 
         assert all(XK.string_to_keysym(x11.keysym_name(n)) for n in names)
     if sys.platform == "win32":
-        from voice_annotate.platform import windows
+        from scribble.platform import windows
 
         assert windows.virtual_key("S") == 0x53 and windows.virtual_key("F5") == 0x74
         assert all(windows.virtual_key(n) for n in names) and windows.virtual_key("Ü") is None
@@ -474,7 +474,7 @@ def test_settings_window_edits_settings(qapp, home, tmp_path):
     window.set_hotkey_failures({"snapshot": "Ctrl+Alt+Shift+S is already used"}, True)
     assert window._hotkey_warnings[HotkeyAction.SNAPSHOT].text() == "Ctrl+Alt+Shift+S is already used"
     window.set_hotkey_failures({}, False)
-    assert "voice-annotate snapshot" in window._hotkey_note.text()
+    assert "scribble snapshot" in window._hotkey_note.text()
     assert AppSettings().retention_days == 30  # saved to disk
     window.close()
 
@@ -499,3 +499,32 @@ def test_onboarding_window_adapts_to_the_session(qapp, home, tmp_path):
     next(b for b in reduced.findChildren(QPushButton) if b.text() == "Snapshot").click()
     assert started == [HotkeyAction.SNAPSHOT]
     reduced.close()
+
+
+def test_adopts_the_folder_of_the_old_name(tmp_path):
+    """0.5 renamed the app: ~/.voice-annotate becomes ~/.scribble, stored paths follow."""
+    import json
+
+    from scribble import paths
+
+    old, new = tmp_path / ".voice-annotate", tmp_path / ".scribble"
+    capture = old / "captures" / "2026-11-11_08-26-14"
+    capture.mkdir(parents=True)
+    (capture / "capture.md").write_text("hi", encoding="utf-8")
+    (old / "voice-annotate.log").write_text("log", encoding="utf-8")
+    (old / "recent.json").write_text(
+        json.dumps([{"folder": str(capture), "files": [str(capture / "capture.md")], "title": "x"}]),
+        encoding="utf-8",
+    )
+
+    assert paths.adopt_old_folder(old, new)
+    moved = new / "captures" / "2026-11-11_08-26-14"
+    assert (moved / "capture.md").read_text(encoding="utf-8") == "hi"
+    assert (new / "scribble.log").is_file()
+    stored = json.loads((new / "recent.json").read_text(encoding="utf-8"))
+    assert stored == [{"folder": str(moved), "files": [str(moved / "capture.md")], "title": "x"}]
+    # Old paths keep working where the system allows a link.
+    if old.is_symlink():
+        assert (old / "captures" / "2026-11-11_08-26-14" / "capture.md").is_file()
+    # Nothing to do the second time, or when both exist.
+    assert not paths.adopt_old_folder(old, new)

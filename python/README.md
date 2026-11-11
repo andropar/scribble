@@ -1,4 +1,4 @@
-# voice-annotate for Windows and Linux
+# Scribble for Windows and Linux
 
 The port of the macOS app. What it does and how to install it is in the
 [main README](../README.md#windows-and-linux); how it relates to the macOS app is in
@@ -7,8 +7,8 @@ The port of the macOS app. What it does and how to install it is in the
 ## Layout
 
 ```
-src/voice_annotate/
-  core/          models, geometry, keyframe selection, markdown: a port of VoiceAnnotateCore,
+src/scribble/
+  core/          models, geometry, keyframe selection, markdown: a port of ScribbleCore,
                  no Qt and no I/O
   render.py      annotations with QPainter (live overlay and saved frames share it)
   video.py       PyAV: recording, frame extraction, audio files, mux
@@ -31,8 +31,8 @@ packaging/       PyInstaller spec, build script and a smoke test for the built a
 
 ```bash
 pip install -e ".[dev]"
-python -m voice_annotate            # the app, from source
-python -m voice_annotate --help     # triggers and developer commands
+python -m scribble            # the app, from source
+python -m scribble --help     # triggers and developer commands
 pytest                              # everything that needs no display
 ```
 
@@ -44,7 +44,7 @@ Two more suites are opt-in:
 
 ```bash
 # A real Whisper model (tiny.en, ~75 MB) on a recording of the sentence in tests/test_model.py
-VOICE_ANNOTATE_TEST_MODEL=1 VOICE_ANNOTATE_SPEECH=speech.wav pytest -m model
+SCRIBBLE_TEST_MODEL=1 SCRIBBLE_SPEECH=speech.wav pytest -m model
 
 # A real desktop session, driven with synthetic mouse and keyboard input
 pytest --desktop tests/integration          # Windows
@@ -66,19 +66,19 @@ For people without Python: a folder with everything in it, made with PyInstaller
 
 ```bash
 pip install -e . pyinstaller
-python packaging/build.py                                  # → dist/voice-annotate/ and an archive
-python packaging/smoke_test.py dist/voice-annotate speech.wav
+python packaging/build.py                                  # → dist/scribble/ and an archive
+python packaging/smoke_test.py dist/scribble speech.wav
 ```
 
-It has two launchers over the same files: `voice-annotate` (the app, no console window) and
-`voice-annotate-cli` (the triggers and developer commands, with output). The smoke test
+It has two launchers over the same files: `scribble` (the app, no console window) and
+`scribble-cli` (the triggers and developer commands, with output). The smoke test
 runs the commands, the whole Snapshot pipeline on a speech recording, and starts and quits
 the app. CI builds and tries it on Windows and Linux and keeps the archives as artifacts.
 
 ## Debugging
 
-- Log: `~/.voice-annotate/voice-annotate.log` (and stderr).
-- `VOICE_ANNOTATE_HOME=/some/folder` moves settings, models and captures (tests use it).
-- `VOICE_ANNOTATE_WATCHDOG=30` writes every thread's stack to stderr every 30 seconds;
+- Log: `~/.scribble/scribble.log` (and stderr).
+- `SCRIBBLE_HOME=/some/folder` moves settings, models and captures (tests use it).
+- `SCRIBBLE_WATCHDOG=30` writes every thread's stack to stderr every 30 seconds;
   on Linux `kill -USR1 <pid>` does it once.
-- `voice-annotate --list-displays` prints the displays, their scaling and the backend in use.
+- `scribble --list-displays` prints the displays, their scaling and the backend in use.

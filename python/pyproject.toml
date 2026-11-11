@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "voice-annotate"
-version = "0.4.0"
+name = "scribble"
+version = "0.5.0"
 description = "Talk and draw on your screen, paste the result into any coding agent (Windows and Linux app)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -33,13 +33,13 @@ dev = ["pytest>=7", "black>=24"]
 cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
 
 [project.scripts]
-voice-annotate = "voice_annotate.app:main"
+scribble = "scribble.app:main"
 
 [project.gui-scripts]
-voice-annotate-gui = "voice_annotate.app:main"
+scribble-gui = "scribble.app:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/voice_annotate"]
+packages = ["src/scribble"]
 
 [tool.black]
 line-length = 110
@@ -48,6 +48,6 @@ target-version = ["py39"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "model: needs a Whisper model download (set VOICE_ANNOTATE_TEST_MODEL=1)",
+    "model: needs a Whisper model download (set SCRIBBLE_TEST_MODEL=1)",
     "desktop: needs a real desktop session (X11 or Windows), run with --desktop",
 ]

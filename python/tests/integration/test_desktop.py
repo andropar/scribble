@@ -2,7 +2,7 @@
 
 Run with ``pytest --desktop`` on a machine nobody is using: they move the pointer, press
 keys and put windows on screen. CI runs them on Windows runners and under Xvfb.
-Screenshots of what was on screen are written to ``$VOICE_ANNOTATE_ARTIFACTS``.
+Screenshots of what was on screen are written to ``$SCRIBBLE_ARTIFACTS``.
 """
 
 import json
@@ -22,11 +22,11 @@ sys.path.insert(0, str(HERE.parent))
 from fakes import pump, wait_until  # noqa: E402
 from support import ARTIFACTS, HYPER, close_to  # noqa: E402
 
-from voice_annotate import clipboard, paths, render  # noqa: E402
-from voice_annotate.core.models import AnnotationTool, CaptureMode  # noqa: E402
-from voice_annotate.processor import RecentCapture  # noqa: E402
-from voice_annotate.session import HUD_LEGEND_NOTE, Phase  # noqa: E402
-from voice_annotate.settings import ClipboardFormat, Hotkey  # noqa: E402
+from scribble import clipboard, paths, render  # noqa: E402
+from scribble.core.models import AnnotationTool, CaptureMode  # noqa: E402
+from scribble.processor import RecentCapture  # noqa: E402
+from scribble.session import HUD_LEGEND_NOTE, Phase  # noqa: E402
+from scribble.settings import ClipboardFormat, Hotkey  # noqa: E402
 
 pytestmark = [
     pytest.mark.desktop,
@@ -320,7 +320,7 @@ def test_walkthrough_with_real_mouse_and_keyboard(env, target, controller):
     assert wait_until(lambda: bool(controller.finished), 60)
     capture = controller.finished[0]
     assert capture is not None, controller.toast.detail
-    from voice_annotate import processor
+    from scribble import processor
 
     processor.wait_for_background()
     folder = Path(capture.folder)
@@ -455,8 +455,8 @@ def test_launch_at_login_round_trip(env, tmp_path, monkeypatch):
         platform.set_autostart(True)
         assert platform.autostart_enabled()
         if sys.platform != "win32":
-            entry = (tmp_path / "config" / "autostart" / "voice-annotate.desktop").read_text(encoding="utf-8")
-            assert "Exec=" in entry and "voice_annotate" in entry and "Type=Application" in entry
+            entry = (tmp_path / "config" / "autostart" / "scribble.desktop").read_text(encoding="utf-8")
+            assert "Exec=" in entry and "scribble" in entry and "Type=Application" in entry
         platform.set_autostart(False)
         assert not platform.autostart_enabled()
         platform.set_autostart(False)  # removing twice is fine
@@ -468,13 +468,13 @@ def test_launch_at_login_round_trip(env, tmp_path, monkeypatch):
 def test_microphone_records_on_the_session_clock(env):
     import numpy as np
 
-    from voice_annotate import audio, video
+    from scribble import audio, video
 
     if audio.input_device_name() is None:
         pytest.skip("no input device in this session")
     # CI routes the default output back into the default input, so a tone played here must
     # come out of the recorder.
-    loopback = os.environ.get("VOICE_ANNOTATE_LOOPBACK") == "1"
+    loopback = os.environ.get("SCRIBBLE_LOOPBACK") == "1"
     player = None
     if loopback:
         import wave
@@ -540,11 +540,11 @@ def test_microphone_records_on_the_session_clock(env):
 
 def trigger(command: str, home: Path) -> str:
     result = subprocess.run(
-        [sys.executable, "-m", "voice_annotate", command],
+        [sys.executable, "-m", "scribble", command],
         capture_output=True,
         text=True,
         timeout=30,
-        env=dict(os.environ, VOICE_ANNOTATE_HOME=str(home)),
+        env=dict(os.environ, SCRIBBLE_HOME=str(home)),
     )
     return (result.stdout + result.stderr).strip()
 
@@ -564,16 +564,16 @@ def test_real_app_end_to_end(env, target, tmp_path):
         else None
     )
     # The watchdog writes every thread's stack to the log if the app gets stuck.
-    app_env = dict(os.environ, VOICE_ANNOTATE_HOME=str(home), VOICE_ANNOTATE_WATCHDOG="45")
+    app_env = dict(os.environ, SCRIBBLE_HOME=str(home), SCRIBBLE_WATCHDOG="45")
     app_env.pop("QT_QPA_PLATFORM", None)
     process = subprocess.Popen(
-        [sys.executable, "-m", "voice_annotate"], env=app_env, stdout=log, stderr=subprocess.STDOUT
+        [sys.executable, "-m", "scribble"], env=app_env, stdout=log, stderr=subprocess.STDOUT
     )
     try:
         assert wait_until(lambda: trigger("status", home) == "ok idle", 60, step=0.5), "app did not start"
         # A second start does not create a second instance.
         second = subprocess.run(
-            [sys.executable, "-m", "voice_annotate"], env=app_env, capture_output=True, text=True, timeout=60
+            [sys.executable, "-m", "scribble"], env=app_env, capture_output=True, text=True, timeout=60
         )
         assert second.returncode == 0 and "already running" in second.stderr
         pump(1.0)

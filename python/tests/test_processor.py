@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 from PySide6.QtGui import QColor
 
-from voice_annotate import paths, processor, render, video
-from voice_annotate.audio import AudioResult
-from voice_annotate.core.geometry import Size
-from voice_annotate.core.models import (
+from scribble import paths, processor, render, video
+from scribble.audio import AudioResult
+from scribble.core.geometry import Size
+from scribble.core.models import (
     BLUE,
     RED,
     Annotation,
@@ -21,7 +21,7 @@ from voice_annotate.core.models import (
     ClickEvent,
     FrameSample,
 )
-from voice_annotate.processor import CaptureInput, DisplayInfo, RecentCapture, RecordingResult, ShotData
+from scribble.processor import CaptureInput, DisplayInfo, RecentCapture, RecordingResult, ShotData
 
 sys.path.insert(0, str(Path(__file__).parent))
 from helpers import FakeTranscriber, gradient_image, solid_frame, tone  # noqa: E402

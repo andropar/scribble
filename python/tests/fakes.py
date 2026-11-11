@@ -10,15 +10,15 @@ import numpy as np
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QImage
 
-from voice_annotate import paths
-from voice_annotate.audio import AudioResult
-from voice_annotate.platform.base import InputState, Platform
-from voice_annotate.screens import ScreenGrabber
+from scribble import paths
+from scribble.audio import AudioResult
+from scribble.platform.base import InputState, Platform
+from scribble.screens import ScreenGrabber
 
 sys.path.insert(0, str(Path(__file__).parent))
 from helpers import gradient_image, solid_frame, tone  # noqa: E402
 
-from voice_annotate.core.geometry import Size  # noqa: E402
+from scribble.core.geometry import Size  # noqa: E402
 
 
 class FakeGrabber(ScreenGrabber):

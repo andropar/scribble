@@ -15,7 +15,7 @@ export const Outro: React.FC = () => {
     <AbsoluteFill style={{ background: theme.paper, fontFamily: theme.sans, alignItems: "center", justifyContent: "center" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 34, transform: `scale(${0.9 + 0.1 * icon})`, opacity: icon }}>
         <Img src={staticFile("icon.png")} style={{ width: 168, height: 168 }} />
-        <div style={{ fontSize: 120, fontWeight: 780, letterSpacing: -4, color: theme.ink }}>voice-annotate</div>
+        <div style={{ fontSize: 120, fontWeight: 780, letterSpacing: -4, color: theme.ink }}>Scribble</div>
       </div>
       <div style={{ display: "flex", gap: 26, marginTop: 30, fontSize: 64, fontWeight: 700, letterSpacing: -1.5 }}>
         {words.map(([w, c], i) => (
@@ -27,7 +27,7 @@ export const Outro: React.FC = () => {
           <div key={f} style={{ padding: "10px 20px", borderRadius: 999, border: `1.5px solid ${theme.line}`, background: "white", fontSize: 25, color: theme.ink, fontWeight: 500 }}>{f}</div>
         ))}
       </div>
-      <div style={{ marginTop: 44, fontFamily: theme.mono, fontSize: 32, color: theme.muted, opacity: at(1.5) }}>github.com/andropar/voice-annotate</div>
+      <div style={{ marginTop: 44, fontFamily: theme.mono, fontSize: 32, color: theme.muted, opacity: at(1.5) }}>github.com/andropar/scribble</div>
     </AbsoluteFill>
   );
 };
