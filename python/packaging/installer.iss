@@ -1,5 +1,5 @@
 ; Inno Setup script: a per-user Windows installer (no administrator rights needed).
-; Built by packaging/build.py when ISCC is available:  ISCC /DAppVersion=0.5.0 installer.iss
+; Built by packaging/build.py when ISCC is available:  ISCC /DAppVersion=0.6.0 installer.iss
 ;
 ; Up to 0.4 the app was called voice-annotate. The AppId is the same, so this installer
 ; updates such an installation: it stops the old app, removes its folder and shortcuts,

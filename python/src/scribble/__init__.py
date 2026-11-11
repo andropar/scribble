@@ -4,4 +4,4 @@ The macOS app lives in ``Sources/`` (Swift). This package is a port that produce
 capture bundle (``capture.md``, annotated frames, ``events.json``).
 """
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
