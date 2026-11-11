@@ -9,9 +9,6 @@
   no API keys.
 </p>
 
-<p align="center"><sub>Scribble was called voice-annotate up to version 0.4. Updating keeps your
-settings, captures and models: <code>~/.voice-annotate</code> becomes <code>~/.scribble</code>.</sub></p>
-
 <p align="center">
   <a href="https://github.com/andropar/scribble/releases/latest/download/scribble-macos.zip"><b>Download for macOS</b></a> ·
   <a href="https://github.com/andropar/scribble/releases/latest/download/scribble-windows-setup.exe"><b>Windows installer</b></a> ·
