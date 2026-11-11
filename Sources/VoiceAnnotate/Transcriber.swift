@@ -7,10 +7,14 @@ struct TranscriptionOutput {
     /// Times relative to the start of the audio.
     var words: [Word]
     var segments: [SpeechSegment]
+    /// Languages the speech was decoded in, in order of first use.
+    var languages: [String] = []
+    /// Why the transcript may be wrong; shown to the user.
+    var warning: String?
 
     /// The transcript as plain prose.
     var plainText: String {
-        segments.map(\.text).joined(separator: " ")
+        TranscriptText.joined(segments.map(\.text))
     }
 }
 
@@ -128,6 +132,7 @@ final class Transcriber: ObservableObject {
             modelFolder: folder.path,
             tokenizerFolder: Paths.models,
             computeOptions: ModelComputeOptions(melCompute: .cpuAndGPU, audioEncoderCompute: encoder, textDecoderCompute: .cpuAndNeuralEngine),
+            segmentSeeker: PatchedSegmentSeeker(),
             verbose: false,
             logLevel: .error,
             load: true,
@@ -150,52 +155,71 @@ final class Transcriber: ObservableObject {
         return url
     }
 
-    func transcribe(_ samples: [Float], model: String, vocabulary: String) async throws -> TranscriptionOutput {
+    func transcribe(_ samples: [Float], model: String, language: TranscriptionLanguage, vocabulary: String) async throws -> TranscriptionOutput {
         // Silence (or no mic): skip, Whisper would hallucinate.
         guard samples.count > Int(AudioResult.sampleRate / 2), AudioRecorder.rms(samples) > 0.0015 else {
             return TranscriptionOutput(words: [], segments: [])
         }
         let kit = try await ensureLoaded(model).value
+        let plan = LanguagePlan.resolve(selection: language, isMultilingual: kit.textDecoder.isModelMultilingual)
         var options = DecodingOptions(
             verbose: false,
             task: .transcribe,
-            language: "en",
+            language: plan.language,
             temperature: 0,
             usePrefillPrompt: true,
-            detectLanguage: false,
+            detectLanguage: plan.language == nil,
             skipSpecialTokens: true,
             withoutTimestamps: false,
             wordTimestamps: true,
             chunkingStrategy: .vad
         )
+        // Each retry detects the language again at a higher temperature, where it can flip:
+        // clear Russian came back as Ukrainian at 0.2 and 0.4. So detection gets one attempt,
+        // and the first-token check, which only abandons a window for a retry, goes with it.
+        if plan.language == nil {
+            options.temperatureFallbackCount = 0
+            options.firstTokenLogProbThreshold = nil
+        }
         let vocab = vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
         if !vocab.isEmpty, let tokenizer = kit.tokenizer {
             options.promptTokens = tokenizer.encode(text: " " + vocab).filter { $0 < tokenizer.specialTokens.specialTokenBegin }
         }
         let started = Date()
         let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
-        let output = Self.convert(results)
-        Log.transcribe.info("Transcribed \(String(format: "%.1f", Double(samples.count) / AudioResult.sampleRate), privacy: .public)s audio in \(String(format: "%.2f", Date().timeIntervalSince(started)), privacy: .public)s, \(output.words.count) words")
+        let duration = Double(samples.count) / AudioResult.sampleRate
+        var output = Self.convert(results, duration: duration)
+        output.warning = plan.warning
+        Log.transcribe.info("Transcribed \(String(format: "%.1f", duration), privacy: .public)s audio in \(String(format: "%.2f", Date().timeIntervalSince(started)), privacy: .public)s, \(output.words.count) words")
         return output
     }
 
-    nonisolated static func convert(_ results: [TranscriptionResult]) -> TranscriptionOutput {
+    /// Skips anything starting after `duration`: the last window is padded to 30 s, and
+    /// Whisper can repeat itself in the padding.
+    nonisolated static func convert(_ results: [TranscriptionResult], duration: Double) -> TranscriptionOutput {
         var words: [Word] = []
         var segments: [SpeechSegment] = []
+        var languages: [String] = []
         for result in results {
-            for segment in result.segments {
+            for segment in result.segments where Double(segment.start) < duration {
                 let text = cleanText(segment.text)
                 if !text.isEmpty {
                     segments.append(SpeechSegment(text: text, start: Double(segment.start), end: Double(segment.end)))
+                    if !languages.contains(result.language) { languages.append(result.language) }
                 }
-                for w in segment.words ?? [] where !isNoise(w.word) {
-                    words.append(Word(text: w.word, start: Double(w.start), end: Double(w.end)))
-                }
+                // Blank fragments carry the spaces of scripts split into fragments.
+                let kept = (segment.words ?? []).filter { isBlank($0.word) || !isNoise($0.word) }
+                words += TranscriptText.mergedFragments(kept.map { Word(text: $0.word, start: Double($0.start), end: Double($0.end)) })
+                    .filter { $0.start < duration }
             }
         }
         words.sort { $0.start < $1.start }
         segments.sort { $0.start < $1.start }
-        return TranscriptionOutput(words: words, segments: segments)
+        return TranscriptionOutput(words: words, segments: segments, languages: languages)
+    }
+
+    private nonisolated static func isBlank(_ word: String) -> Bool {
+        word.allSatisfy(\.isWhitespace)
     }
 
     nonisolated static func isNoise(_ word: String) -> Bool {

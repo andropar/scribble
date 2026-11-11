@@ -1,6 +1,7 @@
 import CoreGraphics
 import XCTest
 @testable import VoiceAnnotateCore
+import WhisperKit
 
 final class ShapeClassifierTests: XCTestCase {
     func circle(turns: Double = 1.0, n: Int = 60, cx: Double = 200, cy: Double = 150, rx: Double = 80, ry: Double = 50) -> [CGPoint] {
@@ -441,5 +442,133 @@ final class MultiDisplayTests: XCTestCase {
         let md = MarkdownComposer.compose(doc)
         XCTAssertTrue(md.contains("frame 2 · 00:03 · display \"DELL (2)\""))
         XCTAssertTrue(md.contains("several displays"))
+    }
+}
+
+final class LanguageListTests: XCTestCase {
+    func testListMatchesWhisperKit() {
+        XCTAssertEqual(Set(WhisperLanguage.all.map(\.code)), Constants.languageCodes)
+        XCTAssertEqual(WhisperLanguage.all.count, 100)
+    }
+
+    func testListIsAlphabetical() {
+        let names = WhisperLanguage.all.map(\.name)
+        XCTAssertEqual(names, names.sorted())
+    }
+
+    func testMenuTitleStartsWithTheEnglishName() {
+        XCTAssertEqual(WhisperLanguage.named(code: "ru")?.menuTitle, "Russian  Русский")
+        XCTAssertEqual(WhisperLanguage.named(code: "en")?.menuTitle, "English")
+        for language in WhisperLanguage.all {
+            XCTAssertTrue(language.menuTitle.hasPrefix(language.name))
+        }
+    }
+}
+
+final class LanguageSettingTests: XCTestCase {
+    func testMissingOrUnknownSettingIsEnglish() {
+        XCTAssertEqual(TranscriptionLanguage(storage: nil), .english)
+        XCTAssertEqual(TranscriptionLanguage(storage: "tlh"), .english)
+    }
+
+    func testSettingRoundTrips() {
+        for language in [TranscriptionLanguage.auto, .english, TranscriptionLanguage(argument: "yue")!] {
+            XCTAssertEqual(TranscriptionLanguage(storage: language.storageValue), language)
+        }
+    }
+
+    func testPersistedModelsStillDecode() {
+        XCTAssertEqual(WhisperModel(rawValue: "openai_whisper-large-v3-v20240930_turbo_632MB"), .largeTurbo)
+        XCTAssertEqual(WhisperModel(rawValue: "openai_whisper-small.en"), .smallEn)
+        XCTAssertEqual(WhisperModel(rawValue: "openai_whisper-base.en"), .baseEn)
+    }
+
+    func testEnglishNeedsNoWarningOnAnyModel() {
+        for model in WhisperModel.allCases {
+            XCTAssertEqual(LanguagePlan.resolve(selection: .english, model: model), LanguagePlan(language: "en", warning: nil))
+        }
+    }
+
+    func testEnglishOnlyModelWarnsForAnythingElse() {
+        let russian = TranscriptionLanguage(argument: "ru")!
+        for selection in [russian, .auto] {
+            for model in [WhisperModel.smallEn, .baseEn] {
+                let plan = LanguagePlan.resolve(selection: selection, model: model)
+                XCTAssertEqual(plan.language, "en")
+                XCTAssertNotNil(plan.warning)
+            }
+        }
+    }
+
+    func testAutoLeavesDetectionToWhisper() {
+        XCTAssertEqual(LanguagePlan.resolve(selection: .auto, model: .base), LanguagePlan(language: nil, warning: nil))
+    }
+
+    func testCantoneseDecodesAsChinese() {
+        let cantonese = TranscriptionLanguage(argument: "yue")!
+        for model in [WhisperModel.largeTurbo, .small, .base] {
+            XCTAssertEqual(LanguagePlan.resolve(selection: cantonese, model: model), LanguagePlan(language: "zh", warning: nil))
+        }
+    }
+
+    func testSuggestedModelResolvesTheWarning() {
+        XCTAssertNil(LanguagePlan.resolve(selection: TranscriptionLanguage(argument: "ru")!, model: .small).warning)
+    }
+}
+
+final class TranscriptTextTests: XCTestCase {
+    private func word(_ text: String, _ start: Double) -> Word {
+        Word(text: text, start: start, end: start + 0.1)
+    }
+
+    private func transcript(_ words: [Word], markers: [Marker] = []) -> String {
+        let frame = FrameRef(number: 1, time: 0, path: "/f.png", pixelSize: CGSize(width: 100, height: 100))
+        return MarkdownComposer.transcriptParagraphs(frames: [frame], words: words, markers: markers).map(\.text).joined(separator: "\n")
+    }
+
+    func testSpacedWordsKeepTheirSeparators() {
+        XCTAssertEqual(transcript([word(" This", 0), word(" save", 1), word("button", 2)]), "This save button")
+    }
+
+    func testJapaneseFragmentsJoinWithoutSpaces() {
+        let words = ["これは", "設", "定", "画", "面", "です。", "この"].enumerated().map { word($1, Double($0)) }
+        XCTAssertEqual(transcript(words), "これは設定画面です。この")
+    }
+
+    func testLatinTermInsideChineseKeepsItsOwnSpace() {
+        XCTAssertEqual(transcript([word("点击", 0), word(" Save", 1), word("按", 2), word("钮", 3)]), "点击 Save按钮")
+    }
+
+    func testMarkIsSetOffInsideUnspacedText() {
+        let marker = Marker(time: 1.5, text: "#1 pin at (1,2) in frame 1")
+        XCTAssertEqual(transcript([word("設", 1), word("定", 2)], markers: [marker]), "設 [#1 pin at (1,2) in frame 1] 定")
+    }
+
+    func testKoreanStaysSpaced() {
+        XCTAssertEqual(transcript([word(" 저장", 0), word("버튼", 1)]), "저장 버튼")
+    }
+
+    func testThaiCombiningMarksMergeIntoTheirCharacter() {
+        let merged = TranscriptText.mergedFragments([word("น", 0), word("ี่", 0.1), word("ค", 0.2), word("ื", 0.3), word("อ", 0.4)])
+        XCTAssertEqual(merged.map(\.text), ["นี่", "คื", "อ"])
+        XCTAssertEqual(merged[0].start, 0)
+        XCTAssertEqual(merged[0].end, 0.2, accuracy: 0.001)
+    }
+
+    func testBlankFragmentBecomesLeadingSpace() {
+        let merged = TranscriptText.mergedFragments([word("ค่า", 0), word(" ", 1), word("ภ", 2)])
+        XCTAssertEqual(merged.map(\.text), ["ค่า", " ภ"])
+        XCTAssertEqual(transcript(merged), "ค่า ภ")
+    }
+
+    func testSpacedWordsAreLeftAlone() {
+        let words = [word(" Вот", 0), word(" страница", 1), word(" настроек.", 2)]
+        XCTAssertEqual(TranscriptText.mergedFragments(words), words)
+    }
+
+    func testJoinedSegments() {
+        XCTAssertEqual(TranscriptText.joined(["One.", "Two."]), "One. Two.")
+        XCTAssertEqual(TranscriptText.joined(["一。", "二。"]), "一。二。")
+        XCTAssertEqual(TranscriptText.joined([]), "")
     }
 }

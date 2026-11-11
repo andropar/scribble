@@ -25,7 +25,10 @@ let package = Package(
         ),
         .testTarget(
             name: "VoiceAnnotateCoreTests",
-            dependencies: ["VoiceAnnotateCore"],
+            dependencies: [
+                "VoiceAnnotateCore",
+                .product(name: "WhisperKit", package: "WhisperKit"),
+            ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

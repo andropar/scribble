@@ -39,6 +39,7 @@ struct CaptureInput {
     var cursorTimeline: [(time: Double, display: Int)]
 
     var model: String
+    var language: TranscriptionLanguage
     var vocabulary: String
     var maxFrames: Int
     var longEdge: Int
@@ -110,7 +111,8 @@ enum CaptureProcessor {
                 }
             }
             do {
-                let out = try await Transcriber.shared.transcribe(samples, model: input.model, vocabulary: input.vocabulary)
+                let out = try await Transcriber.shared.transcribe(samples, model: input.model, language: input.language, vocabulary: input.vocabulary)
+                note = out.warning
                 words = out.words.map { Word(text: $0.text, start: $0.start + audioStart, end: $0.end + audioStart) }
                 segments = out.segments.map { SpeechSegment(text: $0.text, start: $0.start + audioStart, end: $0.end + audioStart) }
             } catch {

@@ -350,7 +350,7 @@ final class SessionController: NSObject, CanvasDelegate {
             var failure: Error?
             if !samples.isEmpty {
                 do {
-                    transcript = try await Transcriber.shared.transcribe(samples, model: self.settings.model.rawValue, vocabulary: self.settings.vocabulary)
+                    transcript = try await Transcriber.shared.transcribe(samples, model: self.settings.model.rawValue, language: self.settings.language, vocabulary: self.settings.vocabulary)
                 } catch {
                     failure = error
                 }
@@ -368,7 +368,11 @@ final class SessionController: NSObject, CanvasDelegate {
                 do {
                     try ClipboardWriter.writeText(text)
                     let words = text.split(whereSeparator: \.isWhitespace).count
-                    Toast.shared.show("Copied to clipboard", detail: "\(words) words", duration: 2.5, on: screen)
+                    if let warning = transcript?.warning {
+                        Toast.shared.show("Copied to clipboard", detail: warning, success: false, duration: 5, on: screen)
+                    } else {
+                        Toast.shared.show("Copied to clipboard", detail: "\(words) words", duration: 2.5, on: screen)
+                    }
                     Sounds.done()
                 } catch {
                     Toast.shared.show("Copy failed", detail: error.localizedDescription, success: false, duration: 4, on: screen)
@@ -482,7 +486,7 @@ final class SessionController: NSObject, CanvasDelegate {
                 duration: duration, annotations: session.annotations, clicks: session.clicks,
                 shots: session.shots, displays: session.displays.map(\.info), audio: audioResult,
                 recordings: recordings, cursorTimeline: session.cursorTimeline,
-                model: self.settings.model.rawValue, vocabulary: self.settings.vocabulary,
+                model: self.settings.model.rawValue, language: self.settings.language, vocabulary: self.settings.vocabulary,
                 maxFrames: self.settings.maxFrames, longEdge: self.settings.imageLongEdge,
                 detailCrops: self.settings.detailCrops, keepOriginals: self.settings.keepOriginals,
                 fadeSeconds: self.settings.fadeSeconds

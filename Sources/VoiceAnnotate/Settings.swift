@@ -4,6 +4,7 @@ import Combine
 import CoreGraphics
 import Foundation
 import ServiceManagement
+import VoiceAnnotateCore
 
 struct Hotkey: Codable, Equatable {
     var keyCode: UInt32
@@ -101,22 +102,6 @@ enum DrawModifier: String, CaseIterable, Identifiable {
     }
 }
 
-enum WhisperModel: String, CaseIterable, Identifiable {
-    case largeTurbo = "openai_whisper-large-v3-v20240930_turbo_632MB"
-    case smallEn = "openai_whisper-small.en"
-    case baseEn = "openai_whisper-base.en"
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .largeTurbo: return "Large v3 Turbo (best, ~630 MB)"
-        case .smallEn: return "Small English (~480 MB)"
-        case .baseEn: return "Base English (fastest, ~150 MB)"
-        }
-    }
-}
-
 enum WhisperCompute: String, CaseIterable, Identifiable {
     case auto, gpu, neuralEngine
 
@@ -157,6 +142,7 @@ final class AppSettings: ObservableObject {
 
     @Published var hotkeys: [String: Hotkey] { didSet { save(hotkeys, "hotkeys") } }
     @Published var model: WhisperModel { didSet { defaults.set(model.rawValue, forKey: "model") } }
+    @Published var language: TranscriptionLanguage { didSet { defaults.set(language.storageValue, forKey: "transcriptionLanguage") } }
     @Published var compute: WhisperCompute { didSet { defaults.set(compute.rawValue, forKey: "compute") } }
     @Published var vocabulary: String { didSet { defaults.set(vocabulary, forKey: "vocabulary") } }
     @Published var maxFrames: Int { didSet { defaults.set(maxFrames, forKey: "maxFrames") } }
@@ -180,6 +166,7 @@ final class AppSettings: ObservableObject {
             hotkeys = [:]
         }
         model = WhisperModel(rawValue: d.string(forKey: "model") ?? "") ?? .largeTurbo
+        language = TranscriptionLanguage(storage: d.string(forKey: "transcriptionLanguage"))
         compute = WhisperCompute(rawValue: d.string(forKey: "compute") ?? "") ?? .auto
         vocabulary = d.string(forKey: "vocabulary") ?? ""
         maxFrames = d.object(forKey: "maxFrames") as? Int ?? 30

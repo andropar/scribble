@@ -20,11 +20,12 @@ the same bundle; §11 says how it is built and where it differs.
   in image pixel coordinates. Pen drawings are burned in and referenced, but not numbered.
 - Output pastes usefully into any agent: Claude Code (terminal), claude.ai / ChatGPT web,
   Cursor / IDE chats.
-- Transcription: WhisperKit (MIT, on-device, Apple Silicon optimized), word-level
-  timestamps, custom vocabulary prompt.
+- Transcription: WhisperKit (MIT, on-device, Apple Silicon optimized), every language of
+  the multilingual Whisper models or auto-detect, word-level timestamps, custom vocabulary
+  prompt.
 - Bundle on the clipboard within ~2–4 s after finishing (model kept warm).
 
-Non-goals: cloud anything, editing past captures, non-English.
+Non-goals: cloud anything, editing past captures, translating the UI or transcripts.
 
 ## 2. User flows
 
@@ -203,10 +204,32 @@ Signed with the stable Apple Development identity so TCC grants survive rebuilds
 
 ## 9. Settings
 
-Hotkeys (recorder) · Whisper model (default `openai_whisper-large-v3-v20240930_turbo_632MB`,
-alternatives small.en / base.en) · compute (Auto / GPU / Neural Engine) · custom vocabulary · max frames · image long edge ·
+Hotkeys (recorder) · transcription language (default English; Auto-detect or any of the
+100 Whisper languages) · Whisper model (default
+`openai_whisper-large-v3-v20240930_turbo_632MB`, alternatives small / base, multilingual, and
+small.en / base.en, English only) · compute (Auto / GPU / Neural Engine) · custom vocabulary · max frames · image long edge ·
 max walkthrough length · fade duration · draw-mode modifier · keep clean originals ·
 default clipboard format · retention days · sounds · launch at login.
+
+**Language and model.** The setting applies to Snapshot, Walkthrough, Dictation and the dev
+CLI, which reads the app's settings even as a bare binary. An English-only model with any
+other selection, including Auto-detect, still transcribes but warns: inline in Settings, and
+as the capture's note (toast and an italic line in `capture.md`). Cantonese is decoded as
+Chinese on every model: Whisper's own token gave an empty transcript, and Auto-detect does the
+same. Auto-detect is Whisper's own, per audio chunk, without temperature retries: a retry
+detects the language again and can flip it.
+
+**Unspaced scripts.** Whisper's word timing splits Chinese, Japanese, Thai and similar
+scripts into fragments without spaces. They are joined without a separator, combining marks
+stay on their character, and a mark reference is set off with spaces.
+
+**Foreign terms.** Whisper may respell words from another language (`Save` → `сейф`). Listing
+them in the custom vocabulary keeps them in most cases; it is a bias, not a guarantee.
+`PatchedSegmentSeeker` keeps word timings right with a prompt: WhisperKit 1.1.1 reads
+alignment rows offset by the prompt length. It also resumes a window cut off at the 224-token
+limit where the text stopped; WhisperKit would skip the rest. With a prompt Whisper may skip segment
+timestamps, so the first word of a sentence can swallow the pause before it, and a mark drawn
+in that pause moves one word on.
 
 ## 10. Risks
 
@@ -219,6 +242,11 @@ default clipboard format · retention days · sounds · launch at login.
 - Displays connected/disconnected mid-capture are not handled (the display list is fixed at
   start).
 - Recordings can contain secrets → local only, auto-pruned.
+- Speech in a second language can vanish when one language dominates a 30 s window: Whisper
+  may jump its first timestamp past it, with Auto-detect too. WhisperKit 1.1.1 ignores
+  `maxInitialTimestamp`, the option meant to prevent this.
+- Auto-detect can differ from a fixed language around silence, where Whisper may also invent
+  a phrase ("Thank you.", "Продолжение следует…").
 
 ## 11. Windows and Linux
 

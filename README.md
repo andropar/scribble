@@ -61,8 +61,11 @@ everything else is the actual pipeline ([example capture.md](docs/demo/example-c
   the images. Agents that can read files (Claude Code in the terminal or desktop app) open
   the frame paths listed in it when they need them. For web chats, *Recent captures* →
   *capture.md + images* attaches the frames too.
+- **Your language.** Narrate in any of the 100 languages Whisper supports, or let it
+  auto-detect: pick one in Settings → Transcription. English is the default. Add the English
+  labels you mention to the custom vocabulary so they keep their spelling.
 - **Fully local.** Transcription runs with [WhisperKit](https://github.com/argmaxinc/WhisperKit)
-  (Whisper large-v3 turbo) on the GPU or Neural Engine. Nothing leaves the machine.
+  (Whisper large-v3 turbo by default) on the GPU or Neural Engine. Nothing leaves the machine.
 
 The shortcuts and details above are those of the macOS app. The
 [Windows and Linux](#windows-and-linux) version has the same three modes and writes the same
@@ -120,13 +123,18 @@ Or build it yourself (see [Build](#build)).
 - **Model download.** The Whisper model (~630 MB) downloads once to
   `~/.voice-annotate/models`; the menu bar menu shows progress (and a retry if it fails). A
   capture finished before the download is done waits for it, with the progress on screen.
+  Settings also offer lighter multilingual models, Small (~490 MB) and Base (~150 MB), which
+  are less accurate outside English, and English-only ones, which warn if you pick another
+  language.
 - **Faster after a while.** For about 10 minutes after the first start, macOS compiles the
   model for the Neural Engine in the background. Until then transcription runs on the GPU,
   roughly 3× slower (a 1-minute recording takes ~15 s instead of ~5 s).
-- **After updating** to a new release (or rebuilding with ad-hoc signing), macOS may keep
-  showing Screen Recording as enabled while the app still can't record. Remove voice-annotate
-  from the list in System Settings → Privacy & Security → Screen Recording (the − button),
-  then add it again, or run `tccutil reset ScreenCapture com.jroth.voiceannotate`.
+- **After updating** to a new release (or rebuilding with ad-hoc signing, or replacing the app
+  with a differently signed build), macOS may keep showing Screen Recording as enabled while
+  the app still can't record: the grant belongs to the old build, and switching it off and on
+  doesn't help. Remove voice-annotate from the list in System Settings → Privacy & Security →
+  Screen Recording (the − button), then add it again, or run
+  `tccutil reset ScreenCapture com.jroth.voiceannotate`, reopen the app and grant it again.
 
 ## Use
 
@@ -243,7 +251,9 @@ like a new app to macOS: see *After updating* above for re-granting Screen Recor
 
 The binary also has developer commands, e.g. `.build/debug/VoiceAnnotate --help`:
 `--transcribe <audio>`, `--render-demo <out.png>`, `--demo-snapshot <audio> [screenshot annotations]`,
-`--test-screenshot [screen]`, `--test-walkthrough <seconds> [screen|all]`.
+`--test-screenshot [screen]`, `--test-walkthrough <seconds> [screen|all]`. They use the app's
+settings; `--language <code|auto>`, `--model <variant>` and `--vocabulary <text>` override
+them for one run.
 `docs/demo/render.sh` regenerates the README images with the real pipeline.
 
 The Windows/Linux app (see [python/README.md](python/README.md)):

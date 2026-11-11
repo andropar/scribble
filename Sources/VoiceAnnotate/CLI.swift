@@ -6,20 +6,62 @@ import VoiceAnnotateCore
 enum CLI {
     static let usage = """
     voice-annotate developer commands:
-      --transcribe <audio-file> [model]      Transcribe a file, print word timings
+      --transcribe <audio-file> [model]      Transcribe a file, print language and word timings
       --render-demo <out.png>                Render every annotation type onto a test image
       --demo-snapshot <audio-file> [screenshot.png annotations.json]
                                              Full Snapshot pipeline on a synthetic (or given @2x) screenshot
       --test-walkthrough <seconds> [screen|all]  Record display(s) (index into NSScreen.screens), run the pipeline
       --test-screenshot [screen]             Screenshot a display, run the pipeline
+
+    Commands use the app's settings. These options override them for one run:
+      --language <code|auto>                 Transcription language, e.g. ru
+      --model <variant>                      Whisper model, e.g. openai_whisper-base
+      --vocabulary <text>                    Custom vocabulary
     """
 
-    static func run(_ args: [String]) -> Never {
+    /// Bundle identifier of the app, whose settings a bare binary doesn't see on its own.
+    private static let appDomain = "com.jroth.voiceannotate"
+
+    private static var languageOverride: TranscriptionLanguage?
+    private static var modelOverride: String?
+    private static var vocabularyOverride: String?
+
+    @MainActor private static var language: TranscriptionLanguage { languageOverride ?? AppSettings.shared.language }
+    @MainActor private static var model: String { modelOverride ?? AppSettings.shared.model.rawValue }
+    @MainActor private static var vocabulary: String { vocabularyOverride ?? AppSettings.shared.vocabulary }
+
+    private static func failUsage() -> Never {
+        FileHandle.standardError.write(Data((usage + "\n").utf8))
+        exit(2)
+    }
+
+    /// Removes `name` and its value from `args`.
+    private static func takeOption(_ name: String, from args: inout [String]) -> String? {
+        guard let index = args.firstIndex(of: name) else { return nil }
+        guard index + 1 < args.count else { failUsage() }
+        let value = args[index + 1]
+        args.removeSubrange(index...(index + 1))
+        return value
+    }
+
+    static func run(_ arguments: [String]) -> Never {
+        if Bundle.main.bundleIdentifier == nil {
+            UserDefaults.standard.addSuite(named: appDomain)
+        }
+        var args = arguments
+        if let value = takeOption("--language", from: &args) {
+            guard let language = TranscriptionLanguage(argument: value) else { failUsage() }
+            languageOverride = language
+        }
+        modelOverride = takeOption("--model", from: &args)
+        vocabularyOverride = takeOption("--vocabulary", from: &args)
+        guard !args.isEmpty else { failUsage() }
+
         Task { @MainActor in
             do {
                 switch args[0] {
                 case "--transcribe" where args.count >= 2:
-                    try await transcribe(path: args[1], model: args.count >= 3 ? args[2] : AppSettings.shared.model.rawValue)
+                    try await transcribe(path: args[1], model: args.count >= 3 ? args[2] : model)
                 case "--render-demo" where args.count >= 2:
                     try renderDemo(to: URL(fileURLWithPath: args[1]))
                 case "--demo-snapshot" where args.count >= 2:
@@ -30,8 +72,7 @@ enum CLI {
                 case "--test-screenshot":
                     try await testScreenshot(screen: screen(at: args.count >= 2 ? args[1] : nil))
                 default:
-                    FileHandle.standardError.write(Data((usage + "\n").utf8))
-                    exit(2)
+                    failUsage()
                 }
                 exit(0)
             } catch {
@@ -95,8 +136,13 @@ enum CLI {
         out(String(format: "audio: %.2fs, rms %.4f", Double(samples.count) / AudioResult.sampleRate, AudioRecorder.rms(samples)))
         try await loadModel(model)
         let started = Date()
-        let result = try await Transcriber.shared.transcribe(samples, model: model, vocabulary: AppSettings.shared.vocabulary)
+        let result = try await Transcriber.shared.transcribe(samples, model: model, language: language, vocabulary: vocabulary)
         out(String(format: "transcribed in %.2fs", Date().timeIntervalSince(started)))
+        let languages = result.languages.joined(separator: ", ")
+        out("language: \(languages.isEmpty ? "none, no speech" : "\(languages) (\(language == .auto ? "detected" : "selected"))")")
+        if let warning = result.warning {
+            FileHandle.standardError.write(Data("warning: \(warning)\n".utf8))
+        }
         for s in result.segments {
             out(String(format: "[segment %6.2f–%6.2f] %@", s.start, s.end, s.text))
         }
@@ -164,7 +210,7 @@ enum CLI {
         return CaptureInput(
             mode: mode, folder: folder, startDate: Date(), t0: t0, duration: duration, annotations: [], clicks: [],
             shots: [], displays: displays, audio: nil, recordings: [:], cursorTimeline: [],
-            model: s.model.rawValue, vocabulary: s.vocabulary,
+            model: model, language: language, vocabulary: vocabulary,
             maxFrames: s.maxFrames, longEdge: s.imageLongEdge, detailCrops: s.detailCrops, keepOriginals: s.keepOriginals,
             fadeSeconds: s.fadeSeconds
         )
@@ -210,7 +256,7 @@ enum CLI {
     private static func demoSnapshot(audioPath: String, imagePath: String?, annotationsPath: String?) async throws {
         Paths.ensure()
         let samples = try AudioRecorder.loadSamples(from: URL(fileURLWithPath: audioPath))
-        try await loadModel(AppSettings.shared.model.rawValue)
+        try await loadModel(model)
         var canvas = CGSize(width: 3008, height: 1692) // 6K display at 2x: exercises detail crops
         var image = demoImage(size: canvas, scale: 2)
         var annotations = demoAnnotations()

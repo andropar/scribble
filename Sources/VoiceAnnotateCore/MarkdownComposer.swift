@@ -209,7 +209,7 @@ public enum MarkdownComposer {
                     flush()
                     current = TranscriptParagraph(time: w.start, frames: [], text: "")
                 }
-                let text = w.text.hasPrefix(" ") ? w.text : " " + w.text
+                let text = TranscriptText.spaced(w.text, after: current?.text ?? "")
                 current?.text += text
                 lastWordEnd = w.end
             }

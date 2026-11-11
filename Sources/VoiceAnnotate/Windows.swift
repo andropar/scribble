@@ -112,8 +112,24 @@ struct SettingsView: View {
     private var transcription: some View {
         Form {
             Section {
+                Picker("Language", selection: $settings.language) {
+                    Text("English").tag(TranscriptionLanguage.english)
+                    Text("Auto-detect").tag(TranscriptionLanguage.auto)
+                    Divider()
+                    ForEach(WhisperLanguage.all.filter { $0.code != "en" }) {
+                        Text($0.menuTitle).tag(TranscriptionLanguage.language($0))
+                    }
+                }
                 Picker("Whisper model", selection: $settings.model) {
                     ForEach(WhisperModel.allCases) { Text($0.title).tag($0) }
+                }
+                if let warning = LanguagePlan.resolve(selection: settings.language, model: settings.model).warning {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(warning, systemImage: "exclamationmark.triangle.fill")
+                            .font(.callout)
+                            .foregroundStyle(.orange)
+                        Button("Use Small (multilingual)") { settings.model = .small }
+                    }
                 }
                 Picker("Run on", selection: $settings.compute) {
                     ForEach(WhisperCompute.allCases) { Text($0.title).tag($0) }
@@ -126,7 +142,7 @@ struct SettingsView: View {
                     }
                 }
             } footer: {
-                Text("Runs fully on-device with WhisperKit. Models live in ~/.voice-annotate/models.")
+                Text("Runs fully on-device with WhisperKit. Models live in ~/.voice-annotate/models. Smaller models are noticeably less accurate outside English.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
@@ -136,7 +152,7 @@ struct SettingsView: View {
             } header: {
                 Text("Custom vocabulary")
             } footer: {
-                Text("Names, jargon and identifiers you say often (e.g. \"SwiftUI, PyTorch, SLURM, WhisperKit\"). Passed to Whisper as a prompt.")
+                Text("Names, jargon and identifiers you say often (e.g. \"SwiftUI, PyTorch, SLURM, WhisperKit\"). Passed to Whisper as a prompt. When you speak another language, list the English labels you mention (e.g. \"Save, Settings\") so they keep their spelling.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
