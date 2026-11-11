@@ -20,19 +20,29 @@ log = logging.getLogger(__name__)
 _FOLDER_FORMAT = "%Y-%m-%d_%H-%M-%S"
 
 
+_home: Optional[Path] = None
+
+
 def root() -> Path:
     override = os.environ.get("SCRIBBLE_HOME")
-    return Path(override) if override else Path.home() / ".scribble"
+    if override:
+        return Path(override)
+    global _home
+    if _home is None:
+        # The first use takes over the folder of voice-annotate, before anything is read
+        # from or created in the new one.
+        new, old = Path.home() / ".scribble", Path.home() / ".voice-annotate"
+        adopt_old_folder(old, new)
+        stuck = not new.exists() and old.is_dir() and not old.is_symlink()
+        _home = old if stuck else new
+    return _home
 
 
-def adopt_old_folder(old: Optional[Path] = None, new: Optional[Path] = None) -> bool:
+def adopt_old_folder(old: Path, new: Path) -> bool:
     """Moves the folder of voice-annotate (captures, models, settings) to where Scribble
     keeps it. A link stays at the old place where the system allows one, so paths in earlier
-    captures still open. Returns whether a folder was moved."""
-    if new is None and os.environ.get("SCRIBBLE_HOME"):
-        return False
-    old = old or Path.home() / ".voice-annotate"
-    new = new or root()
+    captures still open. Returns whether a folder was moved; if it can't be moved, the app
+    keeps using it."""
     if old.is_symlink() or not old.is_dir() or new.exists():
         return False
     try:

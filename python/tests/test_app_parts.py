@@ -528,3 +528,19 @@ def test_adopts_the_folder_of_the_old_name(tmp_path):
         assert (old / "captures" / "2026-11-11_08-26-14" / "capture.md").is_file()
     # Nothing to do the second time, or when both exist.
     assert not paths.adopt_old_folder(old, new)
+
+
+def test_the_first_use_of_the_folder_adopts_the_old_one(tmp_path, monkeypatch):
+    """Whatever touches the folder first (logging, settings) finds the old settings in it."""
+    from scribble import paths
+
+    monkeypatch.delenv("SCRIBBLE_HOME", raising=False)
+    monkeypatch.setattr(paths.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(paths, "_home", None)
+    (tmp_path / ".voice-annotate").mkdir()
+    (tmp_path / ".voice-annotate" / "settings.json").write_text("{}", encoding="utf-8")
+
+    assert paths.settings_file() == tmp_path / ".scribble" / "settings.json"
+    assert paths.settings_file().is_file()
+    paths.ensure()
+    assert (tmp_path / ".scribble" / "captures").is_dir()

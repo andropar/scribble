@@ -125,7 +125,6 @@ def run_app(argv: List[str]) -> int:
     app.setApplicationDisplayName("Scribble")
     app.setQuitOnLastWindowClosed(False)
     app.setWindowIcon(icons.app_icon())
-    paths.adopt_old_folder()
     if ipc.send("settings") is not None:
         sys.stderr.write("Scribble is already running (its Settings window was opened).\n")
         return 0
