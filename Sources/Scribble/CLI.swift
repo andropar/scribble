@@ -246,7 +246,7 @@ enum CLI {
             }
             let name = (path as NSString).lastPathComponent == "audio.m4a" ? ((path as NSString).deletingLastPathComponent as NSString).lastPathComponent : (path as NSString).lastPathComponent
             out(String(format: "%@  %.0fs, %d pieces: %d words, %d missing, %d extra, largest time difference %.2fs", name, Double(samples.count) / rate, cuts.count + 1, reference.count, missing, extra, shift))
-            out(String(format: "    wait after finishing %.1fs instead of %.1fs", wait, onePass))
+            out(String(format: "    wait after finishing %.1fs instead of %.1fs", wait, onePass) + (cuts.isEmpty ? "" : "; cuts at " + cuts.map { String(format: "%.1fs", Double($0) / rate) }.joined(separator: ", ")))
             lines.forEach(out)
             totalWords += reference.count; totalMissing += missing; totalExtra += extra
             if missing + extra > 0 { different += 1 }

@@ -221,14 +221,23 @@ final class Transcriber: ObservableObject {
         return (VADAudioChunker(vad: kit.voiceActivityDetector ?? EnergyVAD()), kit.featureExtractor.windowSamples ?? Constants.defaultWindowSamples)
     }
 
-    /// Skips anything starting after `duration`: the last window is padded to 30 s, and
-    /// Whisper can repeat itself in the padding.
+    /// Skips anything that starts after the audio it was decoded from has ended. Every piece
+    /// of a recording (see `LiveTranscriber`) is padded to 30 s, and Whisper can repeat a
+    /// sentence in the padding. Such a repeat carries times that belong to the next piece,
+    /// so its words would also be sorted in between the words really spoken there.
     nonisolated static func convert(_ results: [TranscriptionResult], duration: Double) -> TranscriptionOutput {
         var words: [Word] = []
         var segments: [SpeechSegment] = []
         var languages: [String] = []
+        // Where each piece starts; a piece ends where the next one starts.
+        let starts = Set(results.map { Double($0.seekTime ?? 0) }).sorted()
         for result in results {
+            let start = Double(result.seekTime ?? 0)
+            let duration = min(duration, starts.first { $0 > start } ?? duration)
             for segment in result.segments where Double(segment.start) < duration {
+                // A repeat can start just before the end: most of its words lie after it.
+                let timed = segment.words ?? []
+                if timed.filter({ Double($0.start) >= duration }).count * 2 > timed.count { continue }
                 let text = cleanText(segment.text)
                 if !text.isEmpty {
                     segments.append(SpeechSegment(text: text, start: Double(segment.start), end: Double(segment.end)))
