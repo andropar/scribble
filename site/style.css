@@ -270,142 +270,17 @@ h1 img {
   color: var(--muted);
 }
 
-/* The demo: a capture on the left, what gets pasted on the right. */
+/* The hero video. */
 .demo {
-  display: grid;
-  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
-  margin-top: 64px;
+  position: relative;
+  margin: 64px 0 0;
+  aspect-ratio: 16 / 9;
+  background: var(--paper-2);
   border-radius: 14px;
   overflow: hidden;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.1),
     0 30px 60px -36px rgba(0, 0, 0, 0.35);
-}
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 42px;
-  padding: 0 12px 0 14px;
-  background: var(--paper-3);
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-}
-.bar-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 550;
-  white-space: nowrap;
-}
-.bar.dark {
-  justify-content: space-between;
-  background: #1c1c1f;
-  border-bottom-color: #27272a;
-  color: #e4e4e7;
-}
-.bar.dark kbd span {
-  background: #2e2e33;
-  color: #e4e4e7;
-  box-shadow:
-    0 0 0 1px #3f3f46,
-    0 1.5px 0 #3f3f46;
-}
-.bar-note {
-  color: #8b8b94;
-  font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tools {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: auto;
-}
-.tools button {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: none;
-}
-.tools button:hover {
-  background: var(--paper-2);
-}
-.tools button.on {
-  background: #e4e4e7;
-}
-.tools svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.tools i {
-  width: 1px;
-  height: 18px;
-  margin: 0 6px;
-  background: var(--line);
-}
-.tools .swatch::before {
-  content: "";
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--c);
-}
-.tools .swatch.on {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--ink);
-}
-.replay {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 11px 0 8px;
-  border: 0;
-  border-radius: 7px;
-  background: var(--ink);
-  font-size: 12.5px;
-  font-weight: 500;
-  color: #fff;
-}
-.replay:hover {
-  background: var(--ink-2);
-}
-.replay svg {
-  width: 14px;
-  height: 14px;
-  fill: currentColor;
-}
-
-.stage {
-  position: relative;
-  aspect-ratio: 1512 / 982;
-  background: var(--line);
-  overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.stage img {
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-#ink {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
 }
 .hud {
   position: absolute;
@@ -454,127 +329,7 @@ h1 img {
   font-weight: 500;
   color: var(--muted);
 }
-.your-turn {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  transform: translate(-50%, 6px);
-  padding: 6px 12px;
-  border-radius: 99px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  transition:
-    opacity 0.25s,
-    transform 0.25s;
-  pointer-events: none;
-}
-@media (hover: hover) and (pointer: fine) {
-  #ink {
-    cursor: crosshair;
-  }
-  .your-turn.show {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.paste {
-  position: relative;
-  background: var(--dark);
-  color: #e4e4e7;
-}
-.paste-in {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-}
-.md {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 14px 16px 12px;
-  font: 400 12.2px/1.62 var(--mono);
-  scrollbar-width: thin;
-  scrollbar-color: #3f3f46 transparent;
-}
-.md p + p {
-  margin-top: 0.55em;
-}
-.md-h {
-  color: #fff;
-  font-weight: 500;
-}
-.md p.md-h:not(:first-child) {
-  margin-top: 1.1em;
-}
-.md-dim {
-  color: #8b8b94;
-}
-.md-file {
-  color: #7ee0b5;
-}
-.md-time {
-  color: #ffd479;
-}
-.cite {
-  padding: 1px 3px;
-  border-radius: 4px;
-  background: rgba(255, 59, 48, 0.4);
-  color: #fff;
-  cursor: default;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  transition: background 0.15s;
-}
-.cite.b {
-  background: rgba(10, 132, 255, 0.48);
-}
-.cite.y {
-  background: rgba(255, 204, 0, 0.36);
-}
-.cite.hot {
-  background: var(--red);
-}
-.cite.b.hot {
-  background: var(--blue);
-}
-.cite.y.hot {
-  background: #b89300;
-}
 /* While the capture plays, the words not spoken yet are dimmed. */
-.playing .w,
-.playing .cite {
-  opacity: 0.3;
-}
-.playing .w.said,
-.playing .cite.lit {
-  opacity: 1;
-}
-.attach {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 10px 16px;
-  border-top: 1px solid #27272a;
-  font: 400 12.2px/1.35 var(--mono);
-  color: #e4e4e7;
-}
-.attach canvas {
-  width: 60px;
-  height: 39px;
-  border-radius: 4px;
-  box-shadow: 0 0 0 1px #3f3f46;
-}
-.attach small {
-  display: block;
-  font-size: 11.5px;
-  color: #8b8b94;
-}
 
 .works {
   grid-column: 1 / -1;
@@ -1967,21 +1722,7 @@ footer .brand {
     padding: 34px 0 30px;
   }
   .demo {
-    grid-template-columns: minmax(0, 1fr);
     margin-top: 32px;
-  }
-  .paste-in {
-    position: static;
-  }
-  .md {
-    max-height: 232px;
-  }
-  .tools,
-  .bar-note {
-    display: none;
-  }
-  .replay {
-    margin-left: auto;
   }
   .modes,
   .split,
@@ -2049,15 +1790,6 @@ footer .brand {
   }
   .os-switch {
     margin-left: 0;
-  }
-}
-
-@media (hover: none) {
-  .tools {
-    display: none;
-  }
-  .replay {
-    margin-left: auto;
   }
 }
 
@@ -2182,17 +1914,17 @@ footer .brand {
   }
   .demo {
     margin-top: 0;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  }
-}
-@media (min-width: 1360px) and (max-width: 1599px) {
-  .shot .bar-title kbd,
-  .paste .bar-note {
-    display: none;
   }
 }
 
-/* The way into the hero demo: a large Play button over the screenshot. */
+/* The way into the hero video: a large Play button over its poster. */
+.demo video {
+  width: 100%;
+  height: 100%;
+}
+.big-play[hidden] {
+  display: none;
+}
 .big-play {
   position: absolute;
   left: 50%;

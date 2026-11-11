@@ -57,47 +57,10 @@
   </p>
   </div>
 
-  <div class="demo" id="demo">
-    <div class="shot">
-      <div class="bar">
-        <span class="bar-title"><kbd data-mac="⌃⌥⌘S" data-pc="Ctrl+Alt+Shift+S">⌃⌥⌘S</kbd>Snapshot</span>
-        <div class="tools" id="tools">
-          <button data-tool="ellipse" class="on" title="Circle" aria-label="Circle"><svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="7" ry="5"/></svg></button>
-          <button data-tool="box" title="Box" aria-label="Box"><svg viewBox="0 0 20 20"><rect x="3.5" y="5.5" width="13" height="9" rx="1.5"/></svg></button>
-          <button data-tool="arrow" title="Arrow" aria-label="Arrow"><svg viewBox="0 0 20 20"><path d="M5 15 14 6M15.5 4.5l-1 6.2-5.2-5.2z"/></svg></button>
-          <button data-tool="pen" title="Pen" aria-label="Pen"><svg viewBox="0 0 20 20"><path d="M3.5 15c3-9 5.5 1.5 8.5-6 1.3-3.2 3-1.5 4.5-4"/></svg></button>
-          <i></i>
-          <button data-color="#ff3b30" class="swatch on" style="--c:#ff3b30" aria-label="Red"></button>
-          <button data-color="#0a84ff" class="swatch" style="--c:#0a84ff" aria-label="Blue"></button>
-          <button data-color="#ffcc00" class="swatch" style="--c:#ffcc00" aria-label="Yellow"></button>
-        </div>
-        <button id="replay" class="replay" title="Play the capture"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="solid" d="M6.5 4.2v11.6l9.5-5.8z"/></svg>Play</button>
-      </div>
-      <div class="stage" id="stage">
-        <img src="assets/screen.png" alt="A training dashboard with four marks drawn on it: two circles, a box and an arrow" draggable="false">
-        <canvas id="ink"></canvas>
-        <div class="hud" aria-hidden="true"><span class="rec"></span><span id="time">0:19</span><span class="lv" id="lv"><i></i><i></i><i></i><i></i><i></i></span><span class="hud-mode">Snapshot<span id="count"> · #4</span></span></div>
-        <p class="your-turn" id="your-turn">Draw on the screenshot</p>
-        <button type="button" class="big-play" id="big-play"><span class="big-play-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.2v11.6l9.5-5.8z"/></svg></span><span class="big-play-text">Play the capture<small>11 seconds, no sound</small></span></button>
-      </div>
-    </div>
-    <div class="paste">
-      <div class="paste-in">
-        <div class="bar dark">
-          <span class="bar-title"><kbd data-mac="⌘V" data-pc="Ctrl+V">⌘V</kbd>capture.md</span>
-          <span class="bar-note">what your agent receives</span>
-        </div>
-        <div class="md" id="md">
-          <p class="md-h"># Screen capture · Snapshot · 0:19</p>
-          <p class="md-dim">Numbered marks (#1, #2, …) are the user's own annotations, cited where they were drawn.</p>
-          <p>- frame 1 · 1568×1018 · <span class="md-file">frame_01.png</span></p>
-          <p class="md-h">## Transcript</p>
-          <p id="transcript" aria-live="off"><span class="md-time">[00:00 · frame 1]</span> Okay. Quick review of the run dashboard. This best <mark class="cite">[#1 circled (301,290)-(450,340) in frame 1]</mark> accuracy says 312%. That has to be a units bug. It's probably multiplying by 100 twice. The legend <mark class="cite">[#2 circled (1241,634)-(1461,784) in frame 1]</mark> here sits right on top of the curves. Can we move it below the chart? And this export <mark class="cite b">[#3 box around (290,908)-(425,966) in frame 1]</mark> button is floating down here. It should go <mark class="cite b">[#4 arrow from (446,910) pointing at (809,230) in frame 1]</mark> up next to the filters.</p>
-        </div>
-        <div class="attach"><canvas id="thumb" width="144" height="94"></canvas><span>frame_01.png<small>1568 × 1018, with your marks</small></span></div>
-      </div>
-    </div>
-  </div>
+  <figure class="demo" id="demo">
+    <video id="hero-film" src="assets/hero.mp4" poster="assets/hero-poster.jpg" preload="none" playsinline muted aria-label="A 30 second demo: a UI bug described by drawing on a screenshot while talking, then pasted into an agent as annotated screenshots and a transcript"></video>
+    <button type="button" class="big-play" id="big-play"><span class="big-play-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.2v11.6l9.5-5.8z"/></svg></span><span class="big-play-text">Watch the demo<small>30 seconds, no sound</small></span></button>
+  </figure>
 
   <a class="scroll-cue" id="scroll-cue" href="#how" aria-label="Scroll to How it works"><span>Scroll</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></a>
 </section>
