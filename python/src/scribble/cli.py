@@ -104,12 +104,25 @@ def load_marks(path: str) -> list:
     return result
 
 
-def _load_model(model, compute) -> None:
+#: ``--language``, ``--model`` and ``--vocabulary``: settings replaced for this run.
+_overrides: dict = {}
+
+
+def _settings():
+    """The app's settings with the command line's overrides (not saved)."""
+    from .settings import AppSettings
+
+    settings = AppSettings()
+    settings._values.update(_overrides)
+    return settings
+
+
+def _load_model(model, compute, language: str = "en") -> None:
     from . import transcriber
 
     whisper = transcriber.shared()
     started = time.time()
-    future = whisper.ensure_loaded(model, compute)
+    future = whisper.ensure_loaded(model, compute, language)
     last = ""
     while not future.done():
         title = whisper.status.title
@@ -123,9 +136,8 @@ def _load_model(model, compute) -> None:
 
 def _settings_input(mode, folder: Path, t0: float, duration: float, displays):
     from .processor import CaptureInput
-    from .settings import AppSettings
 
-    s = AppSettings()
+    s = _settings()
     return CaptureInput(
         mode=mode,
         folder=folder,
@@ -136,6 +148,7 @@ def _settings_input(mode, folder: Path, t0: float, duration: float, displays):
         model=s.model,
         compute=s.compute,
         vocabulary=s.vocabulary,
+        language=s.language,
         max_frames=s.max_frames,
         long_edge=s.image_long_edge,
         detail_crops=s.detail_crops,
@@ -157,20 +170,141 @@ def _finish(inp) -> None:
 
 def transcribe(path: str, model_name: Optional[str]) -> None:
     from . import transcriber, video
-    from .settings import AppSettings, WhisperModel
+    from .settings import WhisperModel
 
-    settings = AppSettings()
+    settings = _settings()
     model = WhisperModel(model_name) if model_name else settings.model
     samples = video.load_samples(path)
     out("audio: {:.2f}s, rms {:.4f}".format(len(samples) / video.SAMPLE_RATE, video.rms(samples)))
-    _load_model(model, settings.compute)
+    _load_model(model, settings.compute, settings.language)
     started = time.time()
-    result = transcriber.shared().transcribe(samples, model, settings.compute, settings.vocabulary)
+    result = transcriber.shared().transcribe(
+        samples, model, settings.compute, settings.vocabulary, settings.language
+    )
     out("transcribed in {:.2f}s".format(time.time() - started))
+    if result.languages:
+        out("language: {}".format(", ".join(result.languages)))
+    if result.warning:
+        out("warning: {}".format(result.warning))
     for s in result.segments:
         out("[segment {:6.2f}–{:6.2f}] {}".format(s.start, s.end, s.text))
     for w in result.words:
         out("{:6.2f}–{:6.2f} {}".format(w.start, w.end, w.text))
+
+
+class _ReplaySource:
+    """A finished recording handed out as if it were being recorded, ``speed`` times faster."""
+
+    def __init__(self, samples, rate: int, speed: float):
+        self._samples, self._per_second, self._started = samples, rate * speed, time.time()
+
+    def samples(self, start: int, count: int):
+        available = int((time.time() - self._started) * self._per_second)
+        return self._samples[start : min(start + count, available)]
+
+
+def _normal(word: str) -> str:
+    return word.strip().lower().strip(".,!?;:\"'…-")
+
+
+def eval_live(arguments: List[str]) -> None:
+    """Transcribes each file in one go and as the app does while recording, and prints every
+    word that differs. With ``--deterministic`` there must be none."""
+    import difflib
+
+    from . import transcriber, video
+    from .live import LiveTranscriber, replay
+
+    flags = {a for a in arguments if a.startswith("--")}
+    files = [a for a in arguments if not a.startswith("--")]
+    if not files or not flags <= {"--deterministic", "--realtime"}:
+        raise ValueError("usage: --eval-live [--deterministic] [--realtime] <audio-file>...")
+    if "--deterministic" in flags:
+        transcriber.DECODING_OVERRIDES["temperature"] = 0.0
+    s = _settings()
+    options = (s.model, s.compute, s.vocabulary, s.language)
+    _load_model(s.model, s.compute, s.language)
+    whisper = transcriber.shared()
+    rate = video.SAMPLE_RATE
+    total = different = 0
+    longest_wait = 0.0
+    for path in files:
+        samples = video.load_samples(path)
+        started = time.time()
+        whole = whisper.transcribe(samples, *options)
+        one_go = time.time() - started
+
+        cuts: List[int] = []
+        if "--realtime" in flags:
+            # The class the app uses, with audio arriving over time. At 8x speed decoding
+            # falls behind, so finishing also has to catch up, as on a slow machine.
+            live = LiveTranscriber(_ReplaySource(samples, rate, 8), whisper, *options)
+            time.sleep(len(samples) / rate / 8)
+            started = time.time()
+            other = live.finish(samples)
+            if other is None:
+                # Nothing was cut (a recording under 30 s) or a piece failed: one go, as in the app.
+                other = whisper.transcribe(samples, *options)
+            wait = time.time() - started
+        else:
+            other, cuts, wait = replay(samples, whisper, *options)
+
+        reference = [_normal(w.text) for w in whole.words]
+        candidate = [_normal(w.text) for w in other.words]
+        lines: List[str] = []
+        changed = 0
+        shift = 0.0
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            None, reference, candidate, autojunk=False
+        ).get_opcodes():
+            if tag == "equal":
+                # Word times must agree too: they place the mark references.
+                for i, j in zip(range(i1, i2), range(j1, j2)):
+                    shift = max(shift, abs(whole.words[i].start - other.words[j].start))
+                continue
+            changed += max(i2 - i1, j2 - j1)
+            at = (
+                whole.words[i1].start
+                if i1 < len(whole.words)
+                else other.words[min(j1, len(other.words) - 1)].start
+            )
+            lines.append(
+                "    {:.1f}s  …{} [-{}] [+{}] {}…".format(
+                    at,
+                    " ".join(reference[max(0, i1 - 3) : i1]),
+                    " ".join(reference[i1:i2]),
+                    " ".join(candidate[j1:j2]),
+                    " ".join(reference[i2 : i2 + 3]),
+                )
+            )
+        name = Path(path).parent.name if Path(path).name == "audio.m4a" else Path(path).name
+        out(
+            "{}: {:.0f}s audio, {} words, one go {:.1f}s, wait after finishing {:.1f}s, cuts at {}, "
+            "{} words differ, largest time shift {:.2f}s".format(
+                name,
+                len(samples) / rate,
+                len(reference),
+                one_go,
+                wait,
+                ", ".join("{:.1f}".format(c / rate) for c in cuts) or "-",
+                changed,
+                shift,
+            )
+        )
+        for line in lines:
+            out(line)
+        total += len(reference)
+        different += changed
+        longest_wait = max(longest_wait, wait)
+    out(
+        "total: {} recordings, {} words, {} differ, longest wait after finishing {:.1f}s".format(
+            len(files), total, different, longest_wait
+        )
+    )
+    if "--deterministic" in flags and different:
+        raise RuntimeError(
+            "{} words differ between one go and transcribing while recording".format(different)
+        )
 
 
 def render_demo(target: str) -> None:
@@ -198,12 +332,11 @@ def demo_snapshot(audio_path: str, image_path: Optional[str], marks_path: Option
     from .core.geometry import Size
     from .core.models import CaptureMode
     from .processor import DisplayInfo, ShotData
-    from .settings import AppSettings
 
     _app()
     samples = video.load_samples(audio_path)
-    settings = AppSettings()
-    _load_model(settings.model, settings.compute)
+    settings = _settings()
+    _load_model(settings.model, settings.compute, settings.language)
     canvas = Size(3008, 1692)  # a 6K display: exercises detail crops
     image = demo_image(canvas, 2)
     annotations = demo_annotations()
@@ -366,15 +499,50 @@ def test_walkthrough(seconds: float, which: Optional[str]) -> None:
     _finish(inp)
 
 
+def _take_overrides(args: List[str]) -> List[str]:
+    """Removes ``--language``, ``--model`` and ``--vocabulary`` with their values from
+    ``args`` and remembers them for ``_settings``."""
+    from .core import language as languages
+    from .settings import WhisperModel
+
+    for option, key in (("--language", "language"), ("--model", "model"), ("--vocabulary", "vocabulary")):
+        if option not in args:
+            continue
+        index = args.index(option)
+        if index + 1 >= len(args):
+            raise ValueError("{} needs a value".format(option))
+        value = args[index + 1]
+        del args[index : index + 2]
+        if key == "language":
+            parsed = languages.parse(value)
+            if parsed is None:
+                raise ValueError("Unknown language {} (a Whisper code such as ru, or auto)".format(value))
+            value = parsed
+        elif key == "model":
+            value = WhisperModel(value).value
+        _overrides[key] = value
+    return args
+
+
 def run(args: List[str]) -> int:
     from .app import USAGE, setup_logging
     from . import __version__
 
     setup_logging()
+    try:
+        args = _take_overrides(list(args))
+    except ValueError as error:
+        sys.stderr.write("error: {}\n".format(error))
+        return 2
+    if not args:
+        sys.stderr.write(USAGE.format(version=__version__))
+        return 2
     command, rest = args[0], args[1:]
     try:
         if command == "--transcribe" and rest:
             transcribe(rest[0], rest[1] if len(rest) > 1 else None)
+        elif command == "--eval-live" and rest:
+            eval_live(rest)
         elif command == "--render-demo" and rest:
             render_demo(rest[0])
         elif command == "--demo-snapshot" and rest:

@@ -20,8 +20,11 @@ from scribble.core.models import (
     CaptureMode,
     ClickEvent,
     FrameSample,
+    SpeechSegment,
+    Word,
 )
 from scribble.processor import CaptureInput, DisplayInfo, RecentCapture, RecordingResult, ShotData
+from scribble.transcriber import TranscriptionOutput
 
 sys.path.insert(0, str(Path(__file__).parent))
 from helpers import FakeTranscriber, gradient_image, solid_frame, tone  # noqa: E402
@@ -283,3 +286,36 @@ def test_recent_capture_json_round_trip():
     again = RecentCapture.from_json(json.loads(json.dumps(capture.to_json())))
     assert again == capture
     assert again.summary == "1 frame · 3 annotations · 142 words"
+
+
+class FinishedLive:
+    """Stands in for ``live.LiveTranscriber``: the transcript made while recording."""
+
+    def __init__(self, output):
+        self.output, self.given = output, None
+
+    def finish(self, samples):
+        self.given = samples
+        return self.output
+
+
+def test_transcript_made_while_recording_is_used(qapp, tmp_path):
+    made = TranscriptionOutput(
+        words=[Word(" made", 0.5, 0.8), Word(" live", 0.9, 1.2)],
+        segments=[SpeechSegment("made live", 0.5, 1.2)],
+        warning="This model only understands English.",
+    )
+    live, whisper = FinishedLive(made), FakeTranscriber()
+    capture = processor.process(snapshot_input(tmp_path, live=live), whisper)
+    md = Path(capture.markdown_path).read_text(encoding="utf-8")
+    assert "**[00:00 · frame 1]** made live" in md and whisper.calls == 0
+    assert len(live.given) == 6 * 16_000
+    # What may be wrong with the transcript reaches the user.
+    assert capture.note == "This model only understands English."
+    assert "_This model only understands English._" in md
+
+
+def test_recording_is_transcribed_here_when_nothing_was_made_while_recording(qapp, tmp_path):
+    live, whisper = FinishedLive(None), FakeTranscriber()
+    capture = processor.process(snapshot_input(tmp_path, live=live), whisper)
+    assert whisper.calls == 1 and capture.word_count == 6 and capture.note is None

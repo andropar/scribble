@@ -24,6 +24,7 @@ from .audio import AudioRecorder, AudioResult, input_device_name
 from .clipboard import RecentsStore
 from .core.models import Annotation, AnnotationTool, CaptureMode, ClickEvent
 from .platform import Platform
+from .live import LiveTranscriber
 from .processor import CaptureInput, RecentCapture, ShotData
 from .recorder import WalkthroughRecorder
 from .screens import Display, ScreenGrabber
@@ -133,6 +134,7 @@ class SessionController(QObject):
         self.toast = Toast(platform)
         self._hud_display: Optional[Display] = None
         self._audio: Optional[AudioRecorder] = None
+        self._live: Optional[LiveTranscriber] = None
         self._recorders: Dict[int, WalkthroughRecorder] = {}
         self._focus_token: Any = None
         self._last_cursor_display: Optional[int] = None
@@ -398,24 +400,28 @@ class SessionController(QObject):
     def _finish_dictation(self, session: CaptureSession) -> None:
         self._set_phase(Phase.PROCESSING)
         audio_result = self._stop_audio()
+        live, self._live = self._live, None
         screen = self._hud_display.screen if self._hud_display is not None else None
         self._teardown_ui()
         sounds.stop()
         self._begin_processing_toast("Transcribing…", screen)
-        settings = self.settings
-        model, compute, vocabulary = settings.model, settings.compute, settings.vocabulary
+        s = self.settings
+        model, compute, vocabulary, language = s.model, s.compute, s.vocabulary, s.language
 
         def work() -> None:
             samples = audio_result.samples if audio_result is not None else []
-            text, failure = "", None
+            text, failure, warning = "", None, None
             if len(samples):
                 try:
-                    text = self.transcriber.transcribe(samples, model, compute, vocabulary).plain_text
+                    out = live.finish(samples) if live is not None else None
+                    if out is None:
+                        out = self.transcriber.transcribe(samples, model, compute, vocabulary, language)
+                    text, warning = out.plain_text, out.warning
                 except Exception as error:
                     log.error("Dictation failed: %s", error)
                     failure = error
             self._save_dictation(samples, text, session.folder)
-            self._dictated.emit(text, failure, screen)
+            self._dictated.emit(text, failure, (screen, warning))
 
         self._run_in_background(work, "dictation")
 
@@ -433,7 +439,8 @@ class SessionController(QObject):
         except Exception as error:
             log.error("Saving dictation failed: %s", error)
 
-    def _on_dictated(self, text: str, failure: Any, screen: Any) -> None:
+    def _on_dictated(self, text: str, failure: Any, context: Any) -> None:
+        screen, warning = context
         self._end_processing_toast()
         if failure is not None:
             self.toast.show_message(
@@ -446,7 +453,11 @@ class SessionController(QObject):
             try:
                 clipboard.write_text(text)
                 self.toast.show_message(
-                    "Copied to clipboard", "{} words".format(len(text.split())), duration=2.5, screen=screen
+                    "Copied to clipboard",
+                    warning or "{} words".format(len(text.split())),
+                    success=warning is None,
+                    duration=2.5 if warning is None else 5,
+                    screen=screen,
                 )
                 sounds.done()
             except Exception as error:
@@ -559,6 +570,7 @@ class SessionController(QObject):
         mode = session.mode
         duration = session.now()
         audio_result = self._stop_audio()
+        live, self._live = self._live, None
         recorders, self._recorders = self._recorders, {}
         screen = self._hud_display.screen if self._hud_display is not None else None
         hud_in_frames = mode == CaptureMode.WALKTHROUGH and not self._hud_excluded()
@@ -584,6 +596,8 @@ class SessionController(QObject):
             model=s.model,
             compute=s.compute,
             vocabulary=s.vocabulary,
+            language=s.language,
+            live=live,
             max_frames=s.max_frames,
             long_edge=s.image_long_edge,
             detail_crops=s.detail_crops,
@@ -640,6 +654,9 @@ class SessionController(QObject):
             return
         mode = session.mode
         self._stop_audio()
+        live, self._live = self._live, None
+        if live is not None:
+            live.cancel()
         recorders, self._recorders = list(self._recorders.values()), {}
         self._teardown_ui()
         if mode == CaptureMode.SNAPSHOT:
@@ -838,6 +855,12 @@ class SessionController(QObject):
         try:
             recorder.start()
             self._audio = recorder
+            # Transcribed while it is recorded, so finishing does not wait for all of it.
+            if hasattr(recorder, "samples"):
+                s = self.settings
+                self._live = LiveTranscriber(
+                    recorder, self.transcriber, s.model, s.compute, s.vocabulary, s.language
+                )
             hud.mic_available = True
             if session.mode == CaptureMode.DICTATION:
                 hud.starting = False

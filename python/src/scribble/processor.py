@@ -19,7 +19,7 @@ from PySide6.QtGui import QImage
 
 from . import render, video
 from .audio import AudioResult
-from .core import describer, keyframes, markdown
+from .core import describer, keyframes, language as languages, markdown
 from .core.geometry import CoordinateMapper, Rect, Size, detail_rect, fit_size
 from .core.keyframes import KeyframeConfig, KeyframeSelection
 from .core.markdown import CaptureDocument, DetailRef, EventsDisplay, EventsFrame, EventsLog, FrameRef, Marker
@@ -84,6 +84,9 @@ class CaptureInput:
     model: WhisperModel = WhisperModel.AUTO
     compute: WhisperCompute = WhisperCompute.AUTO
     vocabulary: str = ""
+    language: str = languages.ENGLISH
+    #: Transcribed while recording (``live.LiveTranscriber``); None = transcribe the audio here.
+    live: Optional[Any] = None
     max_frames: int = 30
     long_edge: int = 1568
     detail_crops: bool = True
@@ -396,7 +399,10 @@ def process(inp: CaptureInput, transcriber: Transcriber) -> RecentCapture:
         writer = threading.Thread(target=write_audio, name="audio-write", daemon=True)
         writer.start()
         try:
-            out = transcriber.transcribe(samples, inp.model, inp.compute, inp.vocabulary)
+            out = inp.live.finish(samples) if inp.live is not None else None
+            if out is None:
+                out = transcriber.transcribe(samples, inp.model, inp.compute, inp.vocabulary, inp.language)
+            note = out.warning
             words = [Word(w.text, w.start + audio_start, w.end + audio_start) for w in out.words]
             segments = [
                 SpeechSegment(s.text, s.start + audio_start, s.end + audio_start) for s in out.segments

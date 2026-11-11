@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, tzinfo
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from . import transcript_text
 from .geometry import Size
 from .models import Annotation, CaptureMode, ClickEvent, Word, _num
 
@@ -143,7 +144,7 @@ def transcript_paragraphs(
             if current is None or (pause > PARAGRAPH_PAUSE and current.text):
                 flush()
                 current = TranscriptParagraph(item.start, [], "")
-            current.text += item.text if item.text.startswith(" ") else " " + item.text
+            current.text += transcript_text.spaced(item.text, current.text)
             last_word_end = item.end
     flush()
     return paragraphs

@@ -6,6 +6,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QGuiApplication
@@ -305,6 +306,43 @@ def test_dictation_flow(app, monkeypatch):
     assert controller.toast.detail == "6 words"
     # Dictations are not listed under recent captures.
     assert not controller.recents.items
+
+
+class ReadableAudio(FakeAudio):
+    """A microphone that can be read while it records, like the real recorder."""
+
+    def samples(self, start, count):
+        return np.zeros(0, dtype=np.float32)
+
+
+def test_recording_is_transcribed_while_it_runs(app, monkeypatch):
+    controller = app
+    controller._audio_factory = ReadableAudio
+    monkeypatch.setattr("scribble.session.input_device_name", lambda: "Fake Mic")
+    controller.settings.set("language", "de")
+
+    controller.start_snapshot()
+    live = controller._live
+    assert live is not None and live._thread.is_alive()
+    assert live._options == (controller.settings.model, controller.settings.compute, "", "de")
+    controller.cancel()
+    assert controller._live is None and wait_until(lambda: not live._thread.is_alive(), 5)
+    wait_until(lambda: controller.phase == Phase.IDLE, 5)
+
+    # Nothing was cut in a recording this short: it is transcribed after finishing.
+    for start, stop in (
+        (controller.start_snapshot, controller.finish),
+        (controller.start_dictation, controller.finish),
+    ):
+        calls = controller.transcriber.calls
+        start()
+        live = controller._live
+        assert live is not None
+        pump(0.7)
+        stop()
+        assert controller._live is None
+        assert wait_until(lambda: controller.phase == Phase.IDLE, 20)
+        assert not live._thread.is_alive() and controller.transcriber.calls == calls + 1
 
 
 def test_dictation_without_microphone(app, monkeypatch):

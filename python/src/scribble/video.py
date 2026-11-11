@@ -213,26 +213,48 @@ def load_samples(path: PathLike, sample_rate: int = SAMPLE_RATE) -> np.ndarray:
     return np.concatenate(chunks).astype(np.float32, copy=False)
 
 
+class StreamResampler:
+    """Resamples mono float samples as they arrive (band-limited, via libswresample). The
+    output does not depend on how the input is split into calls, so what has been returned
+    so far is the beginning of the final result."""
+
+    def __init__(self, source_rate: int, target_rate: int = SAMPLE_RATE):
+        self._source_rate = source_rate
+        self._resampler = av.AudioResampler(format="fltp", layout="mono", rate=target_rate)
+        self._fed = 0
+
+    @staticmethod
+    def _collect(frames) -> np.ndarray:
+        chunks = [frame.to_ndarray().reshape(-1) for frame in frames]
+        return (
+            np.concatenate(chunks).astype(np.float32, copy=False) if chunks else np.zeros(0, dtype=np.float32)
+        )
+
+    def feed(self, samples: np.ndarray) -> np.ndarray:
+        if len(samples) == 0:
+            return np.zeros(0, dtype=np.float32)
+        data = np.ascontiguousarray(samples, dtype=np.float32)
+        frame = av.AudioFrame.from_ndarray(data.reshape(1, -1), format="fltp", layout="mono")
+        frame.sample_rate = self._source_rate
+        frame.pts = self._fed
+        frame.time_base = Fraction(1, self._source_rate)
+        self._fed += len(data)
+        return self._collect(self._resampler.resample(frame))
+
+    def flush(self) -> np.ndarray:
+        """What is still inside the filter. Call once, at the end."""
+        return self._collect(self._resampler.resample(None))
+
+
 def resample(samples: np.ndarray, source_rate: int, target_rate: int = SAMPLE_RATE) -> np.ndarray:
     """Resamples mono float samples (band-limited, via libswresample)."""
     if source_rate == target_rate or len(samples) == 0:
         return np.ascontiguousarray(samples, dtype=np.float32)
-    resampler = av.AudioResampler(format="fltp", layout="mono", rate=target_rate)
-    data = np.ascontiguousarray(samples, dtype=np.float32)
-    chunks: List[np.ndarray] = []
+    stream = StreamResampler(source_rate, target_rate)
     step = source_rate * 30
-    for offset in range(0, len(data), step):
-        frame = av.AudioFrame.from_ndarray(
-            data[offset : offset + step].reshape(1, -1), format="fltp", layout="mono"
-        )
-        frame.sample_rate = source_rate
-        frame.pts = offset
-        frame.time_base = Fraction(1, source_rate)
-        for out in resampler.resample(frame):
-            chunks.append(out.to_ndarray().reshape(-1))
-    for out in resampler.resample(None):
-        chunks.append(out.to_ndarray().reshape(-1))
-    return np.concatenate(chunks).astype(np.float32, copy=False) if chunks else np.zeros(0, dtype=np.float32)
+    chunks = [stream.feed(samples[offset : offset + step]) for offset in range(0, len(samples), step)]
+    chunks.append(stream.flush())
+    return np.concatenate(chunks)
 
 
 def rms(samples: np.ndarray) -> float:

@@ -191,7 +191,8 @@ keeps its settings, captures, models and start at login.
 Both downloads are self-contained (no Python needed) and are built and tried out by
 [GitHub Actions](.github/workflows/desktop.yml) from this source. The app puts an icon in
 the system tray; *Settings* has *Launch at login*. On the first start it downloads a Whisper
-model to `~/.scribble/models` (Small English, ~480 MB, when it runs on the CPU).
+model to `~/.scribble/models` (Small English, ~480 MB, when it runs on the CPU; the
+multilingual Small, about the same size, once you pick another language).
 
 With Python 3.9 or later you can also install it as a package, with
 [uv](https://docs.astral.sh/uv/) or `pipx`:
@@ -225,7 +226,10 @@ keyboard settings if you prefer, or have to (see Wayland below).
 
 - **Transcription** uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper). With an
   NVIDIA GPU, CUDA 12 and cuDNN 9 (`pip install nvidia-cublas-cu12 nvidia-cudnn-cu12` into
-  the same environment) it picks Large v3 Turbo; otherwise it runs on the CPU.
+  the same environment) it picks Large v3 Turbo; otherwise it runs on the CPU with Small,
+  which is less accurate. As on macOS, a recording is transcribed while you talk, so
+  finishing only waits for the last half minute at most, and Settings → Transcription has
+  the language (English by default, Auto-detect, or any of Whisper's 100).
 - **Clipboard.** Windows and X11 have one clipboard item with several formats, so a capture
   goes out as text plus a file list. Terminals paste the text, chat apps attach the files.
 - **Linux, X11.** The capture toolbar cannot be hidden from screen recording there, so it
@@ -276,6 +280,8 @@ pip install -e ".[dev]"
 python -m scribble      # run from source
 pytest                        # core, pipeline and the capture state machine, headless
 ```
+
+It has the same developer commands and overrides (`python -m scribble --help`).
 
 ## Stack
 

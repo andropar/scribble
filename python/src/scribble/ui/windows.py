@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import paths
+from ..core import language as languages
 from ..audio import input_device_name
 from ..platform import HotkeyBackend, Platform
 from ..settings import (
@@ -306,10 +307,42 @@ class SettingsWindow(QWidget):
     def _transcription(self) -> QWidget:
         page = QWidget()
         form = QFormLayout(page)
-        models = [m for m in WhisperModel]
-        form.addRow(
-            "Whisper model", _combo(models, self.settings.model, lambda v: self.settings.set("model", v))
+        language = QComboBox()
+        language.addItem("English", languages.ENGLISH)
+        language.addItem("Auto-detect", languages.AUTO)
+        language.insertSeparator(2)
+        for code, name in languages.LANGUAGES:
+            if code != languages.ENGLISH:
+                language.addItem(name, code)
+        language.setCurrentIndex(max(0, language.findData(self.settings.language)))
+        language.currentIndexChanged.connect(lambda i: self.settings.set("language", language.itemData(i)))
+        form.addRow("Language", language)
+        self._model_box = _combo(
+            [m for m in WhisperModel], self.settings.model, lambda v: self.settings.set("model", v)
         )
+        form.addRow("Whisper model", self._model_box)
+        # An English-only model with another language: the model is not switched for the
+        # user (it may mean a large download), so they are told and offered one.
+        self._language_warning = QWidget()
+        column = QVBoxLayout(self._language_warning)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(4)
+        text = QLabel(languages.ENGLISH_ONLY_WARNING)
+        text.setWordWrap(True)
+        text.setStyleSheet("color: #d9822b; font-size: 11px;")
+        column.addWidget(text)
+        switch = QPushButton("Use Small (multilingual)")
+        switch.clicked.connect(
+            lambda: self._model_box.setCurrentIndex(self._model_box.findData(WhisperModel.SMALL))
+        )
+        row = QHBoxLayout()
+        row.addWidget(switch)
+        row.addStretch(1)
+        column.addLayout(row)
+        form.addRow("", self._language_warning)
+        self._transcription_form = form
+        self.settings.subscribe(lambda key: key in ("model", "language") and self._refresh_language_warning())
+        self._refresh_language_warning()
         form.addRow(
             "Run on", _combo(WhisperCompute, self.settings.compute, lambda v: self.settings.set("compute", v))
         )
@@ -319,8 +352,9 @@ class SettingsWindow(QWidget):
         form.addRow(
             "",
             _note(
-                "Runs fully on this computer with faster-whisper. Models live in {}. The NVIDIA GPU "
-                "option needs CUDA 12 with cuDNN 9; without them the CPU is used.".format(paths.models())
+                "Runs fully on this computer with faster-whisper. Models live in {}. Smaller models "
+                "are noticeably less accurate outside English. The NVIDIA GPU option needs CUDA 12 "
+                "with cuDNN 9; without them the CPU is used.".format(paths.models())
             ),
         )
         vocabulary = QPlainTextEdit(self.settings.vocabulary)
@@ -331,10 +365,15 @@ class SettingsWindow(QWidget):
             "",
             _note(
                 'Names, jargon and identifiers you say often (e.g. "PyTorch, SLURM, kubectl"). '
-                "Passed to Whisper as a hint."
+                "Passed to Whisper as a hint. When you speak another language, list the English "
+                'labels you mention (e.g. "Save, Settings") so they keep their spelling.'
             ),
         )
         return page
+
+    def _refresh_language_warning(self) -> None:
+        plan = languages.resolve(self.settings.language, self.settings.model.is_multilingual)
+        self._transcription_form.setRowVisible(self._language_warning, plan.warning is not None)
 
     def _shortcuts(self) -> QWidget:
         page = QWidget()

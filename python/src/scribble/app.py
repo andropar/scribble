@@ -23,6 +23,10 @@ USAGE = """scribble {version}
 
 Developer commands:
   --transcribe <audio-file> [model]      Transcribe a file, print word timings
+  --eval-live [flags] <audio-file>...    Compare transcribing while recording with one go, word by word
+                                         --deterministic  no random retries: the two must match exactly
+                                         --realtime       feed the audio to LiveTranscriber at 8x speed,
+                                                          as a microphone would
   --render-demo <out.png>                Render every annotation type onto a test image
   --demo-snapshot <audio-file> [screenshot.png annotations.json]
                                          Full Snapshot pipeline on a synthetic (or given @2x) screenshot
@@ -30,6 +34,11 @@ Developer commands:
   --test-walkthrough <seconds> [screen|all]  Record display(s), run the pipeline
   --list-displays                        Print the displays as the app sees them
   --version
+
+Developer commands use the app's settings. These options override them for one run:
+  --language <code|auto>                 Transcription language, e.g. ru
+  --model <name>                         Whisper model, e.g. base
+  --vocabulary <text>                    Custom vocabulary
 """
 
 
@@ -183,8 +192,8 @@ def run_app(argv: List[str]) -> int:
     def on_setting(key: str) -> None:
         if key == "hotkeys":
             register_hotkeys()
-        elif key in ("model", "compute"):
-            whisper.preload(settings.model, settings.compute)
+        elif key in ("model", "compute", "language"):
+            whisper.preload(settings.model, settings.compute, settings.language)
         elif key == "playSounds":
             sounds.enabled = settings.play_sounds
 
@@ -209,14 +218,14 @@ def run_app(argv: List[str]) -> int:
     settings.subscribe(on_setting)
     tray.on_show_settings = show_settings
     tray.on_show_help = show_help
-    tray.on_retry_model = lambda: whisper.preload(settings.model, settings.compute)
+    tray.on_retry_model = lambda: whisper.preload(settings.model, settings.compute, settings.language)
     controller.on_needs_setup = show_help
     register_hotkeys()
 
     server = ipc.TriggerServer(on_command)
     server.listen()
 
-    whisper.preload(settings.model, settings.compute)
+    whisper.preload(settings.model, settings.compute, settings.language)
     paths.prune(settings.retention_days)
     prune_timer = QTimer()
     prune_timer.timeout.connect(lambda: paths.prune(settings.retention_days))

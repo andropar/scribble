@@ -8,12 +8,13 @@ The port of the macOS app. What it does and how to install it is in the
 
 ```
 src/scribble/
-  core/          models, geometry, keyframe selection, markdown: a port of ScribbleCore,
-                 no Qt and no I/O
+  core/          models, geometry, keyframe selection, markdown, languages: a port of
+                 ScribbleCore, no Qt and no I/O (chunks.py, cutting long audio, is its own)
   render.py      annotations with QPainter (live overlay and saved frames share it)
   video.py       PyAV: recording, frame extraction, audio files, mux
   audio.py       microphone → 16 kHz mono on the session clock
   transcriber.py faster-whisper, model download, CUDA probe
+  live.py        transcribes a recording while it runs
   processor.py   a finished capture → frames, capture.md, events.json
   screens.py     displays, screen grabbing (mss; the desktop's tools on Wayland)
   recorder.py    one thread per display: grab, encode, thumbnail
@@ -43,7 +44,8 @@ overlays with a fake screen and microphone.
 Two more suites are opt-in:
 
 ```bash
-# A real Whisper model (tiny.en, ~75 MB) on a recording of the sentence in tests/test_model.py
+# Real Whisper models (tiny.en, ~75 MB, and base, ~145 MB) on a recording of the sentence
+# in tests/test_model.py; SCRIBBLE_SPEECH_DE=german.wav adds a test with German speech
 SCRIBBLE_TEST_MODEL=1 SCRIBBLE_SPEECH=speech.wav pytest -m model
 
 # A real desktop session, driven with synthetic mouse and keyboard input

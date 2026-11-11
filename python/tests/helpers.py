@@ -32,7 +32,7 @@ class FakeTranscriber:
         self.text, self.start, self.step, self.fail = text, start, step, fail
         self.calls = 0
 
-    def transcribe(self, samples, model, compute, vocabulary=""):
+    def transcribe(self, samples, model, compute, vocabulary="", language="en"):
         self.calls += 1
         if self.fail:
             raise RuntimeError("model exploded")
@@ -67,3 +67,27 @@ def gradient_image(canvas: Size, scale: float) -> QImage:
 def tone(seconds: float, freq: float = 440.0, rate: int = 16_000) -> np.ndarray:
     t = np.arange(int(seconds * rate)) / rate
     return (0.3 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
+
+
+def repeated(speech: np.ndarray, seconds: float, pause: float = 0.9, rate: int = 16_000) -> np.ndarray:
+    """A recording of at least ``seconds``: ``speech`` again and again, with pauses."""
+    quiet = np.zeros(int(pause * rate), dtype=np.float32)
+    parts = []
+    while sum(len(p) for p in parts) < seconds * rate:
+        parts += [speech.astype(np.float32), quiet]
+    return np.concatenate(parts)
+
+
+class Playback:
+    """Hands out a finished recording as if it were being recorded, ``speed`` times faster
+    (what ``live.LiveTranscriber`` reads from the microphone)."""
+
+    def __init__(self, samples: np.ndarray, speed: float, rate: int = 16_000):
+        import time
+
+        self._samples, self._per_second, self._clock = samples, rate * speed, time.time
+        self._started = time.time()
+
+    def samples(self, start: int, count: int) -> np.ndarray:
+        available = int((self._clock() - self._started) * self._per_second)
+        return self._samples[start : min(start + count, available)]

@@ -50,6 +50,7 @@ jobs:
           echo "SCRIBBLE_ARTIFACTS=$RUNNER_TEMP/artifacts" >> "$GITHUB_ENV"
           echo "SCRIBBLE_TEST_HOME=$RUNNER_TEMP/va-home" >> "$GITHUB_ENV"
           echo "SCRIBBLE_SPEECH=$RUNNER_TEMP/speech.wav" >> "$GITHUB_ENV"
+          echo "SCRIBBLE_SPEECH_DE=$RUNNER_TEMP/speech-de.wav" >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v5
         with:
@@ -83,7 +84,9 @@ jobs:
 
       - name: Speech sample (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' && !matrix.desktop_only }}
-        run: espeak-ng -v en-us -s 140 -w "$SCRIBBLE_SPEECH" "This button is broken. Please move the legend below the chart."
+        run: |
+          espeak-ng -v en-us -s 140 -w "$SCRIBBLE_SPEECH" "This button is broken. Please move the legend below the chart."
+          espeak-ng -v de -s 140 -w "$SCRIBBLE_SPEECH_DE" "Dieser Knopf ist kaputt. Bitte verschiebe die Legende unter das Diagramm."
 
       - name: Speech sample (Windows)
         if: ${{ !cancelled() && runner.os == 'Windows' }}
@@ -95,13 +98,13 @@ jobs:
           $voice.Speak("This button is broken. Please move the legend below the chart.")
           $voice.Dispose()
 
-      - name: Cache the Whisper test model
+      - name: Cache the Whisper test models
         if: ${{ !cancelled() }}
         continue-on-error: true
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/va-home/models
-          key: whisper-tiny-en-v1
+          key: whisper-test-models-v2
 
       - name: Transcription tests (real Whisper model)
         if: ${{ !cancelled() && !matrix.desktop_only }}

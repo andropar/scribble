@@ -535,6 +535,66 @@ def test_microphone_records_on_the_session_clock(env):
         assert max(levels) > 0.5
 
 
+def test_microphone_is_transcribed_while_it_records(env, monkeypatch):
+    """The real microphone stream and a real Whisper model: pieces of the recording are
+    decoded while it runs, and the transcript is the one the finished recording gives."""
+    import tempfile
+    import wave
+
+    import numpy as np
+
+    from helpers import repeated
+
+    from scribble import audio, transcriber, video
+    from scribble.live import LiveTranscriber
+    from scribble.settings import WhisperCompute, WhisperModel
+
+    speech_path = os.environ.get("SCRIBBLE_SPEECH")
+    if os.environ.get("SCRIBBLE_LOOPBACK") != "1" or not speech_path or not os.path.isfile(speech_path):
+        pytest.skip("needs a speech recording and an output that is routed back into the microphone")
+    if audio.input_device_name() is None:
+        pytest.skip("no input device in this session")
+    spoken = repeated(video.load_samples(speech_path), 60)
+    path = ARTIFACTS / "long-speech.wav"
+    with wave.open(str(path), "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(video.SAMPLE_RATE)
+        f.writeframes((np.clip(spoken, -1, 1) * 32767).astype("<i2").tobytes())
+
+    home = Path(os.environ.get("SCRIBBLE_TEST_HOME") or tempfile.mkdtemp(prefix="scribble-model-"))
+    whisper = transcriber.Transcriber(models_dir=home / "models")
+    args = (WhisperModel.TINY_EN, WhisperCompute.CPU, "", "en")
+    whisper.ensure_loaded(*args[:2]).result(timeout=600)
+    # No random retries, so the two transcripts can be compared word for word.
+    monkeypatch.setitem(transcriber.DECODING_OVERRIDES, "temperature", 0.0)
+
+    player = subprocess.Popen(["paplay", str(path)])
+    recorder = audio.AudioRecorder()
+    recorder.start()
+    live = LiveTranscriber(recorder, whisper, *args)
+    pump(50.0)
+    during = len(live._outputs)
+    result = recorder.stop()
+    player.kill()
+    made = live.finish(result.samples)
+    whole = whisper.transcribe(result.samples, *args)
+    sys.stdout.write(
+        "\n[live] {:.1f}s recorded at {} Hz · {} piece(s) decoded while recording · {} words\n".format(
+            result.duration, recorder._rate, during, len(whole.words)
+        )
+    )
+    assert during >= 1, "nothing was decoded while recording"
+    assert made is not None
+
+    def timed(out):
+        return [(w.text, round(w.start, 3), round(w.end, 3)) for w in out.words]
+
+    assert timed(made) == timed(whole)
+    heard = " ".join(w.text.lower() for w in whole.words)
+    assert heard.count("legend") >= 4 and heard.count("chart") >= 4, heard
+
+
 # MARK: the real app, as a separate process
 
 

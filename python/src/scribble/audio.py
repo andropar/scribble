@@ -126,6 +126,11 @@ class AudioRecorder:
         self._rate = SAMPLE_RATE
         self._started_at = 0.0
         self._warned = False
+        # What has been converted to 16 kHz so far, for reading while recording.
+        self._convert_lock = threading.Lock()
+        self._converted = np.zeros(0, dtype=np.float32)
+        self._consumed = 0
+        self._resampler: Optional[video.StreamResampler] = None
         self.on_level: Optional[Callable[[float], None]] = None
 
     def start(self) -> None:
@@ -133,6 +138,8 @@ class AudioRecorder:
             self._chunks, self._count, self._first_time = [], 0, None
             self._started_at = paths.now()
             self._warned = False
+        with self._convert_lock:
+            self._converted, self._consumed, self._resampler = np.zeros(0, dtype=np.float32), 0, None
         self._stream = self._open_stream(self._callback)
         reported = float(getattr(self._stream, "samplerate", SAMPLE_RATE) or SAMPLE_RATE)
         self._rate = int(round(reported)) if 8_000 <= reported <= 384_000 else SAMPLE_RATE
@@ -182,6 +189,32 @@ class AudioRecorder:
         if self.on_level is not None and len(mono):
             self.on_level(level_from_rms(float(np.sqrt(np.mean(np.square(mono, dtype=np.float64))))))
 
+    def _convert(self, final: bool = False) -> None:
+        """Brings ``_converted`` up to date with what the microphone has delivered. The
+        audio is resampled as one stream, so what is converted now is the beginning of what
+        ``stop`` returns."""
+        with self._convert_lock:
+            with self._lock:
+                new = self._chunks[self._consumed :]
+                self._consumed = len(self._chunks)
+            parts = [self._converted]
+            if self._rate == SAMPLE_RATE:
+                parts += new
+            else:
+                if self._resampler is None:
+                    self._resampler = video.StreamResampler(self._rate, SAMPLE_RATE)
+                if new:
+                    parts.append(self._resampler.feed(np.concatenate(new)))
+                if final:
+                    parts.append(self._resampler.flush())
+            if len(parts) > 1:
+                self._converted = np.concatenate(parts).astype(np.float32, copy=False)
+
+    def samples(self, start: int, count: int) -> np.ndarray:
+        """Up to ``count`` samples (16 kHz) from ``start``, while recording continues."""
+        self._convert()
+        return self._converted[start : start + count]
+
     def stop(self) -> AudioResult:
         stream, self._stream = self._stream, None
         if stream is not None:
@@ -190,10 +223,10 @@ class AudioRecorder:
                 stream.close()
             except Exception as error:
                 log.error("Stopping the microphone failed: %s", error)
+        self._convert(final=True)
         with self._lock:
-            samples = np.concatenate(self._chunks) if self._chunks else np.zeros(0, dtype=np.float32)
             first = self._first_time
             self._chunks, self._count = [], 0
-        if self._rate != SAMPLE_RATE:
-            samples = video.resample(samples, self._rate, SAMPLE_RATE)
+        with self._convert_lock:
+            samples, self._converted, self._consumed = self._converted, np.zeros(0, dtype=np.float32), 0
         return AudioResult(samples=samples, first_sample_time=first)

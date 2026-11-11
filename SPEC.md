@@ -289,6 +289,7 @@ feeds a capture's `events.json` from the macOS app through the port and expects 
 | Recording | HEVC via AVAssetWriter | H.264 via PyAV, real timestamps (variable frame rate) |
 | Audio | AVAudioEngine | PortAudio (`sounddevice`), AAC via PyAV |
 | Transcription | WhisperKit (Core ML) | faster-whisper (CTranslate2): CPU, or CUDA |
+| Pieces of long audio | WhisperKit's `VADAudioChunker` | `core/chunks.py` |
 | Hotkeys | Carbon `RegisterEventHotKey` | `RegisterHotKey` / X11 passive key grabs |
 | Rendering | Core Graphics | QPainter (same geometry, shadows approximated) |
 | Settings | UserDefaults | `~/.scribble/settings.json` |
@@ -320,9 +321,26 @@ Differences that follow from the platforms:
   X11 cannot, so it is visible in walkthrough keyframes and `capture.md` says what it is.
 - **No compositor (some X11 setups).** A translucent overlay would be opaque, so the
   Walkthrough overlay is cut to the shape of the marks and grabs the pointer while drawing.
-- **Transcription model.** Auto picks Large v3 Turbo on a working NVIDIA GPU and Small English
-  on the CPU. CUDA is probed in a child process first: a broken CUDA setup aborts the process
-  it is loaded in instead of raising.
+- **Transcription model.** Auto picks Large v3 Turbo on a working NVIDIA GPU. On the CPU it
+  picks Small: the English-only one while the language setting is English, the multilingual
+  one otherwise (each is downloaded when first needed). Small, Base and their English-only
+  variants can also be chosen; language setting, warning and vocabulary hint work as in §9.
+  CUDA is probed in a child process first: a broken CUDA setup aborts the process it is
+  loaded in instead of raising.
+- **Transcribing while recording.** Same design as on macOS, with its own cuts.
+  faster-whisper has no chunker to reuse, so `core/chunks.py` cuts a recording into pieces
+  of at most 30 s, each ending in the middle of the quietest 0.3 s in the second half of the
+  30 s after its start, and `Transcriber.transcribe` decodes every piece on its own
+  (`convert` drops what Whisper repeats in a piece's padding, as on macOS). A cut depends
+  only on audio already recorded, so `live.LiveTranscriber` makes the same cuts on a worker
+  thread during the recording, reading the microphone through `AudioRecorder.samples`
+  (resampled as one stream, so what it reads is the beginning of the final audio), and
+  decodes each piece once it is complete. Finishing decodes the rest. One piece is decoded
+  at a time; on a CPU too slow to keep up, the pieces wait and finishing catches up. With
+  temperature retries off, the transcript is identical to transcribing the finished
+  recording in one go (`--eval-live --deterministic`, with `--realtime` for the class
+  itself; a CI test does the same with a real model). Recordings up to 30 s are one piece
+  and decoded exactly as before.
 - **Wayland** does not let an app watch the keyboard, the pointer or the screen. The app runs
   through XWayland in a reduced mode: Snapshot (screenshot from `grim`, the desktop portal,
   `spectacle` or `gnome-screenshot`) and Dictation, started from the tray or from desktop

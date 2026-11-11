@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from . import paths
+from .core import language as languages
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +105,8 @@ class DrawModifier(str, Enum):
 class WhisperModel(str, Enum):
     AUTO = "auto"
     LARGE_TURBO = "large-v3-turbo"
+    SMALL = "small"
+    BASE = "base"
     SMALL_EN = "small.en"
     BASE_EN = "base.en"
     TINY_EN = "tiny.en"
@@ -111,12 +114,20 @@ class WhisperModel(str, Enum):
     @property
     def title(self) -> str:
         return {
-            "auto": "Auto (Large v3 Turbo on a GPU, Small English on the CPU)",
-            "large-v3-turbo": "Large v3 Turbo (best, ~1.6 GB)",
-            "small.en": "Small English (~480 MB)",
-            "base.en": "Base English (fast, ~145 MB)",
-            "tiny.en": "Tiny English (fastest, ~75 MB)",
+            "auto": "Auto (Large v3 Turbo on a GPU, Small on the CPU)",
+            "large-v3-turbo": "Large v3 Turbo (best, multilingual, ~1.6 GB)",
+            "small": "Small (multilingual, ~480 MB)",
+            "base": "Base (multilingual, fast, ~145 MB)",
+            "small.en": "Small English (English only, ~480 MB)",
+            "base.en": "Base English (English only, fast, ~145 MB)",
+            "tiny.en": "Tiny English (English only, fastest, ~75 MB)",
         }[self.value]
+
+    @property
+    def is_multilingual(self) -> bool:
+        """Whether the model understands languages other than English. Auto picks one that
+        fits the language setting."""
+        return not self.value.endswith(".en")
 
 
 class WhisperCompute(str, Enum):
@@ -157,6 +168,7 @@ _DEFAULTS: Dict[str, Any] = {
     "hotkeys": {},
     "model": WhisperModel.AUTO.value,
     "compute": WhisperCompute.AUTO.value,
+    "language": "en",
     "vocabulary": "",
     "maxFrames": 30,
     "imageLongEdge": 1568,
@@ -230,6 +242,8 @@ class AppSettings:
             return lo <= value <= hi
         if isinstance(default, dict):
             return isinstance(value, dict)
+        if key == "language":
+            return isinstance(value, str) and languages.parse(value) == value
         return isinstance(value, str)
 
     def save(self) -> None:
@@ -270,6 +284,11 @@ class AppSettings:
     @property
     def compute(self) -> WhisperCompute:
         return WhisperCompute(self._values["compute"])
+
+    @property
+    def language(self) -> str:
+        """``"auto"`` (Whisper detects it) or a Whisper language code."""
+        return languages.from_storage(self._values["language"])
 
     @property
     def draw_modifier(self) -> DrawModifier:
