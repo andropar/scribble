@@ -86,6 +86,16 @@
     show(os || "mac");
   }
 
+  // The scroll hint at the bottom of the hero goes as soon as the page moves.
+  var cue = document.getElementById("scroll-cue");
+  if (cue) {
+    var away = function () {
+      cue.classList.toggle("gone", window.scrollY > 40);
+    };
+    window.addEventListener("scroll", away, { passive: true });
+    away();
+  }
+
   // The bar shows the name only once the one in the hero has scrolled away.
   var nav = document.getElementById("nav");
   var title = document.querySelector("h1");
@@ -233,6 +243,16 @@
   var countLabel = document.getElementById("count");
   var levels = document.querySelectorAll("#lv i");
   var hint = document.getElementById("your-turn");
+  var bigPlay = document.getElementById("big-play");
+  var replay = document.getElementById("replay");
+  // The big button is the first thing to press; once the capture has played or the visitor
+  // has drawn, it leaves and the small one in the bar says Replay.
+  function dismiss() {
+    if (!bigPlay.hidden) {
+      bigPlay.hidden = true;
+      replay.lastChild.textContent = "Replay";
+    }
+  }
   var tools = document.getElementById("tools");
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -586,7 +606,8 @@
   // The invitation to draw shows once, when the pointer first reaches the screenshot.
   var invited = false;
   stage.addEventListener("pointerenter", function (e) {
-    if (invited || playing || e.pointerType === "touch") return;
+    if (invited || playing || !bigPlay.hidden || e.pointerType === "touch")
+      return;
     invited = true;
     hint.classList.add("show");
     setTimeout(function () {
@@ -619,6 +640,7 @@
   }
 
   function play() {
+    dismiss();
     cancelAnimationFrame(raf);
     compose();
     setHot(null);
@@ -726,6 +748,7 @@
       finish();
     }
     setHot(null);
+    dismiss();
     hint.classList.remove("show");
     var p = point(e);
     current = { tool: tool, a: p, b: p, points: [p], color: color };
@@ -777,7 +800,8 @@
     if (b.dataset.tool) tool = b.dataset.tool;
     else color = b.dataset.color;
   });
-  document.getElementById("replay").addEventListener("click", play);
+  replay.addEventListener("click", play);
+  bigPlay.addEventListener("click", play);
 
   window.addEventListener("resize", fit);
   function begin() {
