@@ -323,8 +323,9 @@ Differences that follow from the platforms:
   Walkthrough overlay is cut to the shape of the marks and grabs the pointer while drawing.
 - **Transcription model.** Auto picks Large v3 Turbo on a working NVIDIA GPU. On the CPU it
   picks Small: the English-only one while the language setting is English, the multilingual
-  one otherwise (each is downloaded when first needed). Small, Base and their English-only
-  variants can also be chosen; language setting, warning and vocabulary hint work as in §9.
+  one otherwise (each is downloaded when first needed). Every model can also be chosen by
+  hand, Large v3 Turbo on the CPU included (slower there); language setting, warning and
+  vocabulary hint work as in §9.
   CUDA is probed in a child process first: a broken CUDA setup aborts the process it is
   loaded in instead of raising.
 - **Transcribing while recording.** Same design as on macOS, with its own cuts.

@@ -226,8 +226,9 @@ keyboard settings if you prefer, or have to (see Wayland below).
 
 - **Transcription** uses [faster-whisper](https://github.com/SYSTRAN/faster-whisper). With an
   NVIDIA GPU, CUDA 12 and cuDNN 9 (`pip install nvidia-cublas-cu12 nvidia-cudnn-cu12` into
-  the same environment) it picks Large v3 Turbo; otherwise it runs on the CPU with Small,
-  which is less accurate. As on macOS, a recording is transcribed while you talk, so
+  the same environment) it picks Large v3 Turbo; otherwise it runs on the CPU and starts
+  with Small, which is faster there and less accurate. Settings → Transcription lets you pick
+  any model, Large v3 Turbo included. As on macOS, a recording is transcribed while you talk, so
   finishing only waits for the last half minute at most, and Settings → Transcription has
   the language (English by default, Auto-detect, or any of Whisper's 100).
 - **Clipboard.** Windows and X11 have one clipboard item with several formats, so a capture
