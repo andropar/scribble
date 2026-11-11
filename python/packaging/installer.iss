@@ -18,8 +18,9 @@ AppPublisherURL=https://github.com/andropar/scribble
 AppSupportURL=https://github.com/andropar/scribble/issues
 DefaultDirName={localappdata}\Programs\Scribble
 DefaultGroupName=Scribble
-; Not the folder of voice-annotate.
+; Not the folder or the Start menu group of voice-annotate.
 UsePreviousAppDir=no
+UsePreviousGroup=no
 DisableProgramGroupPage=yes
 DisableDirPage=yes
 PrivilegesRequired=lowest

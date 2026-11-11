@@ -279,6 +279,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          # The runner sets this to its real home; the scripts follow it.
+          export XDG_CONFIG_HOME="$HOME/.config"
           mkdir "$RUNNER_TEMP/unpacked" && tar -xzf dist/scribble-linux-x86_64.tar.gz -C "$RUNNER_TEMP/unpacked"
 
           # An update over 0.4.0, when the app was called voice-annotate and started at login.
