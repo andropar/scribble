@@ -9,15 +9,21 @@ final class WindowPresenter {
     private var windows: [String: NSWindow] = [:]
 
     func show<V: View>(id: String, title: String, view: V) {
+        show(id: id) {
+            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+            window.title = title
+            window.styleMask = [.titled, .closable, .miniaturizable]
+            return window
+        }
+    }
+
+    func show(id: String, make: () -> NSWindow) {
         NSApp.activate(ignoringOtherApps: true)
         if let window = windows[id] {
             window.makeKeyAndOrderFront(nil)
             return
         }
-        let host = NSHostingController(rootView: view)
-        let window = NSWindow(contentViewController: host)
-        window.title = title
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        let window = make()
         window.isReleasedWhenClosed = false
         window.center()
         windows[id] = window
@@ -27,18 +33,67 @@ final class WindowPresenter {
 
 // MARK: Settings
 
+enum SettingsTab: CaseIterable {
+    case general, capture, transcription, shortcuts
+
+    var title: String {
+        switch self {
+        case .general: "General"
+        case .capture: "Capture"
+        case .transcription: "Transcription"
+        case .shortcuts: "Shortcuts"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .capture: "viewfinder"
+        case .transcription: "waveform"
+        case .shortcuts: "keyboard"
+        }
+    }
+}
+
+/// The standard macOS settings window: icon tabs in the toolbar, the window titled after the
+/// selected tab and resized to fit it.
+final class SettingsTabsController: NSTabViewController {
+    static func makeWindow(settings: AppSettings, transcriber: Transcriber) -> NSWindow {
+        let tabs = SettingsTabsController()
+        tabs.tabStyle = .toolbar
+        for tab in SettingsTab.allCases {
+            let host = NSHostingController(rootView: SettingsView(tab: tab, settings: settings, transcriber: transcriber))
+            host.sizingOptions = [.preferredContentSize]
+            host.title = tab.title // the tab controller titles the window after the selected child
+            let item = NSTabViewItem(viewController: host)
+            item.label = tab.title
+            item.image = NSImage(systemSymbolName: tab.symbol, accessibilityDescription: tab.title)
+            tabs.addTabViewItem(item)
+        }
+        let window = NSWindow(contentViewController: tabs)
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.toolbarStyle = .preference
+        return window
+    }
+}
+
 struct SettingsView: View {
+    let tab: SettingsTab
     @ObservedObject var settings: AppSettings
     @ObservedObject var transcriber: Transcriber
 
     var body: some View {
-        TabView {
-            general.tabItem { Label("General", systemImage: "gearshape") }
-            capture.tabItem { Label("Capture", systemImage: "viewfinder") }
-            transcription.tabItem { Label("Transcription", systemImage: "waveform") }
-            shortcuts.tabItem { Label("Shortcuts", systemImage: "keyboard") }
+        Group {
+            switch tab {
+            case .general: general
+            case .capture: capture
+            case .transcription: transcription
+            case .shortcuts: shortcuts
+            }
         }
-        .frame(width: 560, height: 540)
+        .scrollDisabled(true)
+        .frame(width: 520)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Value text plus a bare stepper, so the row label stays short and aligned.

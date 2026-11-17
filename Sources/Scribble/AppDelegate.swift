@@ -63,10 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSettings() {
-        WindowPresenter.shared.show(
-            id: "settings", title: "Scribble Settings",
-            view: SettingsView(settings: settings, transcriber: Transcriber.shared)
-        )
+        WindowPresenter.shared.show(id: "settings") {
+            SettingsTabsController.makeWindow(settings: settings, transcriber: Transcriber.shared)
+        }
     }
 
     private func showOnboarding() {
